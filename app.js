@@ -5,7 +5,10 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+var usersRouter = require('./routes/user/user');
+
+
+const util = require('util');
 
 var app = express();
 
@@ -28,6 +31,15 @@ db.connect(function(err) {
   console.log('Connected to database.');
 });
 
+// Promisify the query function
+db.query = util.promisify(db.query);
+// MySQL 연결을 모든 라우터에서 사용할 수 있도록 설정
+app.use((req, res, next) => {
+  req.db = db;
+  next();
+});
+
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
@@ -39,7 +51,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
+app.use('/user', usersRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
