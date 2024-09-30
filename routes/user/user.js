@@ -26,8 +26,8 @@ router.post('/login', async (req,res) => {
       res.status(200).json({
         message: '로그인 성공',
         user_id: check[0].user_id,
-        student_num: '20201813',
-        user_password: '1234'
+        student_num: check[0].student_num,
+        user_password: check[0].user_password
       });
     } else {
       // 로그인 실패
