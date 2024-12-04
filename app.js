@@ -1,24 +1,26 @@
 var createError = require('http-errors');
+var cors = require('cors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var session = require('express-session');
 
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/user/user');
-
+var loginRotuer = require('./routes/login/login');
 
 const util = require('util');
 
 var app = express();
+// Enable CORS
+app.use(cors());
 
-
-var mysql = require('mysql');
+var mysql = require('mysql2');
 
 var db = mysql.createConnection({
   host: 'localhost',
-  user: 'root',
-  password: '1234',
+  user: 'master',
+  password: '1111',
   database: 'mydex',
   port: 3306
 })
@@ -30,6 +32,17 @@ db.connect(function(err) {
   }
   console.log('Connected to database.');
 });
+
+// 세션 미들웨어 설정
+app.use(session({
+  secret: '1234', // 비밀 키 설정
+  resave: false,
+  saveUninitialized: true,
+  cookie: { 
+    secure: false,
+    expires: new Date(Date.now() + (1000 * 60 * 60 * 24 * 7)) // 7일 동안 유효한 쿠키 설정
+   } // HTTPS 사용 시 secure: true
+}));
 
 // Promisify the query function
 db.query = util.promisify(db.query);
@@ -51,7 +64,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
-app.use('/user', usersRouter);
+app.use('/login', loginRotuer);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
