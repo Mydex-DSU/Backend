@@ -63,7 +63,6 @@ router.post('/admin', async (req, res) =>  {
     logger.info(`Request received for URL: ${req.originalUrl}`);
     const {adm_name} = req.body
     try{
-        
         const adm_check = await req.db.query(
             'select * from admin where adm_name = ?'
             ,[adm_name]
