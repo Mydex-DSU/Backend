@@ -4,7 +4,7 @@ var router = express.Router();
 var logger = require('../../logger');
 
 
-/* 학교 예산과 학부 */
+/* 학교 예산과 학부 돈 나누기*/
 router.post('/', async (req, res) =>  {
     logger.info(`Request received for URL: ${req.originalUrl}`);
     const { start_date, school_total_budget_amount, end_date } = req.body;
@@ -75,6 +75,7 @@ router.post('/', async (req, res) =>  {
                 [row.faculty_id, semester, faculty_budget_amount, faculty_mydex_points, InsertBudget.insertId]
             )
         }
+        res.json({message : "성공적으로 진행되었습니다."})
     }
     catch(error)
     {
