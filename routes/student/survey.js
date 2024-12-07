@@ -52,7 +52,7 @@ router.get('/noshowreasoncategories', async (req, res) => {
         const noshowreasoncategories = await req.db.query(
             'select * from noshowreasoncategories',
         )
-        res.json({message : noshowreasoncategories})
+        res.json({noshowreasoncategories : noshowreasoncategories})
     }
     catch(error)
     {

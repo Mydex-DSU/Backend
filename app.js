@@ -20,10 +20,13 @@ var mydexscholarship = require('./routes/admin/mydexscholarship');
 var remedialprogram = require('./routes/admin/remedialprogram');
 
 //학생
+var profile = require('./routes/student/profile')
 var programapplication = require('./routes/student/application');
 var survey = require('./routes/student/survey');
 var mydexscholarshipapplication = require('./routes/student/mydexscholarshipapplication')
 var remedialprogramapplication = require('./routes/student/remedialprogramapplication')
+var loan = require('./routes/student/loan')
+var stuprogram = require('./routes/student/stuprogram');
 
 
 const util = require('util');
@@ -33,10 +36,13 @@ var app = express();
 // Enable CORS
 
 app.use(cors());
-app.use('/uploads', express.static(path.join(__dirname, '../../upload')));
+// app.use('/uploads', express.static(path.join(__dirname, '../../upload')));
+app.use('/uploads', express.static(path.join(__dirname, './upload')));
 
 //구제 프로그램 pdf
-app.use('/pdf_uploads', express.static(path.join(__dirname, '../../pdf_uploads')));
+// app.use('/pdf_uploads', express.static(path.join(__dirname, '../../pdf_uploads')));
+app.use('/pdf_uploads', express.static(path.join(__dirname, './pdf_uploads')));
+
 
 
 var mysql = require('mysql2');
@@ -295,18 +301,84 @@ const updateProgramStates = async () => {
                     if (fin_mydex_points !== null)
                     {
                       console.log(fin_mydex_points)
-                      await db.query(
-                        `UPDATE student 
-                         SET stu_current_mydex_points = GREATEST(stu_current_mydex_points + ?, 1)
-                         WHERE stu_id = ?`,
-                        [fin_mydex_points, student.stu_id]
-                      );
 
-                      //4. 학생 mydex 온도 포인트 거래 내역에 값 삽입.
-                      await db.query(
-                        'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
-                        [student.stu_id, "비교과프로그램", fin_mydex_points, program.program_id]
+                      //대출 포인트가 있냐 없냐 체크
+                      const student_select = await db.query(
+                        'select stu_current_loan_points from student where stu_id = ?',
+                        [student.stu_id]
                       )
+
+                      if (student_select[0].stu_current_loan_points > 0) //대출 포인트 있음
+                      {
+                        if (fin_mydex_points > 0) // P > 0
+                        {
+                          if (student_select[0].stu_current_loan_points >= fin_mydex_points) // D >= P
+                          {
+                            fin_mydex_points = fin_mydex_points * -1;
+                            
+                            //student 테이블에서 학생 대출 포인트 업데이트
+                            await db.query(
+                                'UPDATE student SET stu_current_loan_points = stu_current_loan_points + ?, WHERE stu_id = ?;',
+                                [fin_mydex_points, student.stu_id]
+                            )
+
+                            //대출 포인트 거래 내역 업데이트
+                            await db.query(
+                                'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                                ,[student.stu_id, "상환", fin_mydex_points, student_select[0].stu_current_loan_points + fin_mydex_points]
+                            )
+                          }
+                          else // D < P
+                          {
+                            // 1 = 3 - 2
+                            const finDP = fin_mydex_points - student_select[0].stu_current_loan_points;
+                            //student 테이블에서 학생 대출 포인트 업데이트
+                            await db.query(
+                              'UPDATE student SET stu_current_loan_points = 0, stu_current_mydex_points = stu_current_mydex_points + ? WHERE stu_id = ?;',
+                              [finDP, student.stu_id]
+                            )
+
+                            //대출 포인트 거래 내역 업데이트
+                            await db.query(
+                                'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                                ,[student.stu_id, "상환", -student_select[0].stu_current_loan_points, 0]
+                            )
+
+                            //Mydex 온도 포인트 거래 내역
+                            await db.query(
+                              'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
+                              [student.stu_id, "비교과프로그램", finDP, program.program_id]
+                            )
+                          }
+                        }
+                        else if (fin_mydex_points < 0) // P < 0
+                        {
+                          const status = student_select[0].stu_current_loan_points + fin_mydex_points
+                          if (status > 0) // M + P > 0 
+                          {
+
+                          }
+                          else if (status <= 0)  // M + P <= 0 
+                          {
+
+                          }
+                        }
+                      }
+                      else // 대출 포인트 없음
+                      {
+                        await db.query(
+                          `UPDATE student 
+                           SET stu_current_mydex_points = GREATEST(stu_current_mydex_points + ?, 1)
+                           WHERE stu_id = ?`,
+                          [fin_mydex_points, student.stu_id]
+                        );
+
+                        //4. 학생 mydex 온도 포인트 거래 내역에 값 삽입.
+                        await db.query(
+                          'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
+                          [student.stu_id, "비교과프로그램", fin_mydex_points, program.program_id]
+                        )
+                      }
                     }
 
                 }
@@ -352,6 +424,9 @@ app.use('/mydexscholarship', mydexscholarship);
 app.use('/mydexscholarshipapplication', mydexscholarshipapplication);
 app.use('/remedialprogramapplication', remedialprogramapplication)
 app.use('/remedialprogram', remedialprogram);
+app.use('/loan', loan)
+app.use('/profile', profile)
+app.use('/stuprogram', stuprogram)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

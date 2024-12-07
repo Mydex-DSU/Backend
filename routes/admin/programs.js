@@ -64,7 +64,8 @@ router.post('/registration',  upload.single('program_poster_image'), async (req,
         program_mydex_points } = req.body;
         console.log('Request Body:', req.body);  // 텍스트 데이터 (폼 필드)
 
-        const program_poster_image = req.file ? `/uploads/${req.file.filename}` : null;
+        // const program_poster_image = req.file ? `/uploads/${req.file.filename}` : null;
+        const program_poster_image = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
         console.log(program_poster_image)
     try {
         if (req.file) {
