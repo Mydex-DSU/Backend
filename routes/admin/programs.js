@@ -185,19 +185,38 @@ router.get('/fin/detail', async (req, res) => {
 /* 비교과 프로그램 완료 목록 중인 프로그램 상태가 평가중에서 학생들을 평가하기 버튼을 눌러 mydex 온도 포인트 부여 */ 
 router.post('/fin/evaluation', async (req, res) => {
     logger.info(`Request received for URL: ${req.originalUrl}`);
-    const {stu_id, stu_give_mydex_points} = req.body
+    const {stu_id, stu_give_mydex_points, program_id} = req.body
     try {
 
         //프로그램에 신청 중인 학생 리스트 보내주기
         const stu_name = await req.db.query(
             'select stu_name from student where stu_id = ?',
-            [stu_id]
+            [stu_id, program_id]
         )
 
         await req.db.query(
-            `UPDATE studentcompletesprogram SET stu_give_mydex_points = ? WHERE stu_id = ?`,
-            [stu_give_mydex_points, stu_id]
+            `UPDATE studentcompletesprogram SET stu_give_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
+            [stu_give_mydex_points, stu_id, program_id]
         );
+
+        //부여되는 mydex 온도 포인트가 양수인지 음수인지
+        console.log("awd")
+        if (stu_give_mydex_points < 0)
+        {
+            console.log("1stu_give_mydex_points " + stu_give_mydex_points)
+            await req.db.query(
+                `UPDATE studentcompletesprogram SET no_show_reason_response_status = ? WHERE stu_id = ? and program_id = ?`,
+                [false, stu_id, program_id]
+            );
+        }
+        else 
+        {
+            console.log("2stu_give_mydex_points " + stu_give_mydex_points)
+            await req.db.query(
+                `UPDATE studentcompletesprogram SET survey_response_status = ? WHERE stu_id = ? and program_id = ?`,
+                [false, stu_id, program_id]
+            );
+        }
 
         res.json({ message: stu_name[0].stu_name + "에게 " +stu_give_mydex_points + "의 mydex 온도 포인트를 부여하였습니다." });
     } catch (error) {
