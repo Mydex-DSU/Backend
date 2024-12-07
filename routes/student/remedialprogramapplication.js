@@ -55,7 +55,7 @@ router.post('/application', upload.single('qualification_documents'), async (req
 
     try {
         // 업로드된 파일 정보 확인
-        const qualification_documents = req.file
+        let qualification_documents = req.file
             ? `/pdf_uploads/${req.file.filename}` // 저장된 PDF 파일 경로
             : null;
 
@@ -64,6 +64,7 @@ router.post('/application', upload.single('qualification_documents'), async (req
         }
 
         console.log('Uploaded PDF file path:', qualification_documents);
+        qualification_documents = `${req.protocol}://${req.get('host')}/pdf_uploads/${req.file.filename}`
 
         // 데이터베이스에 저장
         await req.db.query(
