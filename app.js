@@ -24,6 +24,7 @@ var programapplication = require('./routes/student/application');
 var survey = require('./routes/student/survey');
 var mydexscholarshipapplication = require('./routes/student/mydexscholarshipapplication')
 var remedialprogramapplication = require('./routes/student/remedialprogramapplication')
+var loan = require('./routes/student/loan')
 
 
 const util = require('util');
@@ -352,6 +353,7 @@ app.use('/mydexscholarship', mydexscholarship);
 app.use('/mydexscholarshipapplication', mydexscholarshipapplication);
 app.use('/remedialprogramapplication', remedialprogramapplication)
 app.use('/remedialprogram', remedialprogram);
+app.use('/loan', loan)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
