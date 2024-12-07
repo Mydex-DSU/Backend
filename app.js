@@ -21,6 +21,7 @@ var mydexscholarship = require('./routes/admin/mydexscholarship');
 //학생
 var programapplication = require('./routes/student/application');
 var survey = require('./routes/student/survey');
+var mydexscholarshipapplication = require('./routes/student/mydexscholarshipapplication')
 
 
 const util = require('util');
@@ -344,6 +345,7 @@ app.use('/programs', programs);
 app.use('/application', programapplication);
 app.use('/survey', survey)
 app.use('/mydexscholarship', mydexscholarship);
+app.use('/mydexscholarshipapplication', mydexscholarshipapplication);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
