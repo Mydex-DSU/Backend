@@ -13,6 +13,8 @@ router.post('/', async (req, res) =>  {
     const date = new Date(start_date);
     const month = date.getMonth(); 
     let semester = "";
+    req.session.end_date = new Date(end_date)
+    req.session.start_date = new Date(start_date)
 
     if (month >= 0 && month <= 5) {  // 1~6월이면 1학기
         semester = "1학기";
