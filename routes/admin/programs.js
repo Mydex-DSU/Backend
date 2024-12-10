@@ -3,7 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 var router = express.Router();
-
+const moment = require('moment'); 
 var logger = require('../../logger');
 
 
@@ -48,6 +48,7 @@ const upload = multer({ storage: storage });
 router.post('/registration',  upload.single('program_poster_image'), async (req, res) =>  {
     logger.info(`Request received for URL: ${req.originalUrl}`);
     const {
+        department_name,
         programtype_name, // 속성 x
         program_money,
         program_name,
@@ -82,9 +83,9 @@ router.post('/registration',  upload.single('program_poster_image'), async (req,
         console.log(programtype[0].programtype_id)
 
         //2. 값 넣기
-        await req.db.query(
+        const insertProgram = await req.db.query(
             ' INSERT INTO programs ( \
-            adm_id, programtype_id, program_money, \
+            department_name, adm_id, programtype_id, program_money, \
             program_name, program_description,\
             program_application_start_time, program_application_end_time,\
             program_operation_start_time, program_operation_end_time,\
@@ -92,8 +93,8 @@ router.post('/registration',  upload.single('program_poster_image'), async (req,
             program_max_participants, program_poster_image,\
             program_year, program_semester,\
             program_mydex_points, program_status\ ) \
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [   1, programtype[0].programtype_id, program_money, 
+            VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [   department_name, 1, programtype[0].programtype_id, program_money, 
                 program_name, program_description,
                 program_application_start_time, program_application_end_time,
                 program_operation_start_time, program_operation_end_time,
@@ -102,25 +103,55 @@ router.post('/registration',  upload.single('program_poster_image'), async (req,
                 program_year, program_semester,
                 program_mydex_points, '대기중'
             ]
-            // [req.session.adm_id, programtype.programtype_id, program_money, 
-            //     program_name, program_description,
-            //     program_application_start_time, program_application_end_time,
-            //     program_operation_start_time, program_operation_end_time,
-            //     program_survey_start_time, program_survey_end_time,
-            //     program_max_participants, program_poster_image,
-            //     program_year, program_semester,
-            //     program_mydex_points, '대기중'
-            // ]
         )
+
+        //학부별 예산 처리 내역 업데이트
+          const facultyInfo = await req.db.query(
+            `SELECT 
+                d.department_name, 
+                f.faculty_name,
+                f.faculty_id,
+                f.faculty_mydex_points
+            FROM 
+                department d
+            JOIN 
+                faculty f
+            ON 
+                d.faculty_id = f.faculty_id 
+            WHERE 
+                d.department_name = ?`,
+            [department_name]
+        );
+
+        console.log(facultyInfo)
+
+        const date = new Date();
+        const month = date.getMonth(); 
+        let semester = "";
+    
+        if (month >= 0 && month <= 5) {  // 1~6월이면 1학기
+            semester = "1학기";
+        } else if (month >= 6 && month <= 11) {  // 7~12월이면 2학기
+            semester = "2학기";
+        }
+
+        //학부 예산 처리
+        await req.db.query(
+            'UPDATE faculty SET faculty_budget_amount = faculty_budget_amount - ?, faculty_mydex_points = faculty_mydex_points - ? WHERE faculty_id = ?;',
+            [program_money, program_money/5000, facultyInfo[0].faculty_id]
+        );
+
+        //학부 예산 처리 거래 내역
+        await req.db.query(
+            'insert into faculty_budget_transactions(faculty_id, faculty_semester, faculty_used_budget, faculty_used_mydex_points, faculty_transaction_details) \
+            values (?, ?, ?, ?, ?)',
+            [facultyInfo[0].faculty_id, semester, -program_money, -(program_money / 5000), insertProgram.insertId]
+        )
+
+
         res.status(200).json({
             message: 'Program registered successfully!',
         })
-        // res.status(200).json({
-        //     message: 'Program registered successfully!',
-        //     program_name: req.body.program_name, // 예시로 보냄
-        //     program_description: req.body.program_description, // 예시로 보냄
-        //     program_poster_image: program_poster_image // 저장된 이미지 URL 반환
-        // })
     } catch (error) {
         console.error('Error processing request:', error);
         res.status(500).json({
@@ -147,7 +178,7 @@ router.get('/fin', async (req, res) => {
 });
 
 /* 비교과 프로그램 완료 목록 중 하나 상세 조회 */
-router.get('/fin/detail', async (req, res) => {
+router.post('/fin/detail', async (req, res) => {
     logger.info(`Request received for URL: ${req.originalUrl}`);
     const {program_id} = req.body
     try {
@@ -225,6 +256,51 @@ router.post('/fin/evaluation', async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
+/* 프로그램 신청 학생 목록 조회 */
+router.post('/application/detail', async (req,res) => {
+    const {program_id} = req.body
+
+    try{
+        const program = await req.db.query(
+            'select * from programs where program_id = ?',
+            [program_id]
+        )
+        const programdetail = await req.db.query(
+            'select * from studentprogramlist join student on studentprogramlist.stu_id = student.stu_id where program_id = ?',
+            [program_id]
+        )
+
+         // application_datetime을 현재 시간에 맞추어 포맷팅
+         const formattedDetails = programdetail.map(detail => {
+            return {
+                ...detail,
+                application_datetime: moment().format('YYYY-MM-DD') // 현재 시간 포맷팅
+            };
+        });
+
+
+        res.json({program: program, programdetail : formattedDetails})
+
+    }catch(error){
+        console.log(error);
+    }
+})
+
+/* 프로그램 종류별 노쇼 비율 그래프 */
+router.get('/noshowgraph', async (req,res) => {
+
+    try{
+        const programtype = await req.db.query(
+            'select * from programtype',
+        )
+
+        res.json({programtype: programtype})
+
+    }catch(error){
+        console.log(error);
+    }
+})
 
 
 
