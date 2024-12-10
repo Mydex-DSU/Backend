@@ -66,6 +66,85 @@ router.post('/noshowhistory', async (req, res) => {
     }
 });
 
+/* 학생 학부 남은 온도 포인트 */
+router.post('/remainfacultypoints', async (req, res) => {
+    const {stu_id} = req.body
+    try 
+    {
+        // 학생의 학부 정보 조회
+        const facultyInfo = await req.db.query(
+            `SELECT 
+                s.stu_id, 
+                d.department_name, 
+                f.faculty_name,
+                f.faculty_mydex_points
+            FROM 
+                student s 
+            JOIN 
+                department d 
+            ON 
+                s.department_name = d.department_name 
+            JOIN 
+                faculty f 
+            ON 
+                d.faculty_id = f.faculty_id 
+            WHERE 
+                s.stu_id = ?`,
+            [stu_id]
+        );
+
+        res.json({facultyInfo : facultyInfo[0]})
+    }
+    catch(error)
+    {
+        console.log(error)
+    }   
+})
+
+/* 학생이 보는 비교과프로그램 */
+router.get('/program', async (req,res) => {
+    try
+    {
+        const all_program = await req.db.query(
+            'select * from programs'
+        )
+        res.json({all_program : all_program})
+    }catch(error){
+        console.log(error)
+    }
+})
+
+/* 학생 입장 비교과 프로그램 상세 */
+router.post('/program/detail', async (req,res) => {
+    const {program_id} = req.body
+    try
+    {
+        const program_detail = await req.db.query(
+            'select * from programs join admin on admin.adm_id = programs.adm_id where program_id = ?',
+            [program_id]
+        )
+
+        const program_detail_all = await Promise.all(
+            program_detail.map(async (detail) => {
+                // 프로그램 현재 신청한 인원
+                const [program_application_student] = await req.db.query(
+                    'SELECT COUNT(*) AS program_application_student FROM studentprogramlist WHERE program_id = ?;',
+                    [program_id]
+                );
+        
+                return {
+                    ...detail,
+                    program_application_student: program_application_student.program_application_student,
+                };
+            })
+        );
+        
+        
+        res.json({program_detail_all : program_detail_all})
+    }catch(error){
+        console.log(error)
+    }
+})
 
 
 module.exports = router;

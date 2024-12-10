@@ -49,6 +49,7 @@ app.use('/pdf_uploads', express.static(path.join(__dirname, './pdf_uploads')));
 
 
 var mysql = require('mysql2');
+const { copyFileSync } = require('fs');
 
 var db = mysql.createConnection({
   host: 'localhost',
@@ -135,11 +136,16 @@ const updateProgramStates = async () => {
           program.program_status = '모집완료';  
       } else if (currentTime >= applicationStartTime){
           // 상태 변경 로직
-          if (currentTime >= applicationStartTime && currentTime <= applicationEndTime) {
-              program.program_status = '모집중'; 
-          } else if (currentTime >= operationStartTime && currentTime <= operationEndTime) {
-              program.program_status = '운영중';
-          } else if (currentTime > operationEndTime && currentTime < surveyStartTime) {
+          if (currentTime >= applicationStartTime && currentTime < applicationEndTime) {
+            program.program_status = '모집중'; 
+          } else if (currentTime >= applicationEndTime && currentTime < operationStartTime){
+            program.program_status = '모집완료'; 
+          } 
+          else if (currentTime >= operationStartTime && currentTime < operationEndTime) {
+            program.program_status = '운영중';
+
+
+          } else if (currentTime >= operationEndTime && currentTime < surveyStartTime) {
               program.program_status = '평가중';
               const programtype_name = await db.query(
                 'select programtype_name from programtype where programtype_id = ?',
@@ -165,7 +171,6 @@ const updateProgramStates = async () => {
                     //랜덤으로 학생의 프로그램 종류에 따라 얼마인지
                     const anyNotNull =
                     studentcompletecheck[0].attendance_rate === null &&
-                    studentcompletecheck[0].award_status === null &&
                     studentcompletecheck[0].participation_status === null &&
                     studentcompletecheck[0].report_submission_status === null;
                     if (anyNotNull)
@@ -201,13 +206,16 @@ const updateProgramStates = async () => {
                     }
                   }
               }
-          } else if (currentTime >= surveyStartTime && currentTime <= surveyEndTime) {
+          } else if (currentTime >= surveyStartTime && currentTime < surveyEndTime) {
               program.program_status = '설문조사';
-          } else if (currentTime > surveyEndTime) {
+          } else if (currentTime >= surveyEndTime) {
               program.program_status = '종료';
               //1. 학생, 완료 프로그램에서 각 해당하는 어떤 설문조사에서 이 설문조사를 했는지 안 했는지에 대해 알아야됨
               //프로그램 아이디오 신청 목록에 있는 학생들 전부 순회
+              // console.log(studentProgram)
               for (const student of studentProgram){
+                // console.log(student.stu_id)
+                // console.log( program.program_id)
                 // console.log(student);
                 // console.log('-----------------------');
                 
@@ -216,7 +224,8 @@ const updateProgramStates = async () => {
                   'select stu_give_mydex_points,response_status_change_mydex_points,survey_response_status,no_show_reason_response_status from studentcompletesprogram where stu_id = ? and program_id = ?'
                   ,[student.stu_id, program.program_id]
                 )
-                // console.log("studentcompletecheck[0].stu_give_mydex_points : " + studentcompletecheck[0].stu_give_mydex_points)
+                // console.log(studentcompletecheck)
+                // console.log("studentcompletecheck[0].response_status_change_mydex_points : " + studentcompletecheck[0].response_status_change_mydex_points)
 
              
                 if (studentcompletecheck[0].response_status_change_mydex_points === null)
@@ -435,7 +444,7 @@ const updateProgramStates = async () => {
                 //학생 참여 완료로 변경하기
                 const students = await db.query(
                   'UPDATE studentprogramlist set stu_program_status = ? where stu_id = ? and program_id = ?',
-                  [student.stu_id, program.program_id]
+                  ["참여완료", student.stu_id, program.program_id]
                 )
               }
           }
@@ -456,23 +465,25 @@ const updateProgramStates = async () => {
           'select * from student'
         )
         for (const student_one of students) {
-          //student 테이블에서 학생 대출 포인트 업데이트 ->
-          await db.query(
-            'UPDATE student SET stu_current_loan_points = 0, stu_no_show_count = stu_no_show_count + 2 WHERE stu_id = ?;',
-            [student_one.stu_id]
-          )
+          if (student_one.stu_current_loan_points !== 0){
+            //student 테이블에서 학생 대출 포인트 업데이트 ->
+            await db.query(
+              'UPDATE student SET stu_current_loan_points = 0, stu_no_show_count = stu_no_show_count + 2 WHERE stu_id = ?;',
+              [student_one.stu_id]
+            )
 
-          //대출 포인트 거래 내역 업데이트 ->
-          const insertloanpointtransactionhistory = await db.query(
-            'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
-            ,[student_one.stu_id, "노쇼로인한초기화", -student_select[0].stu_current_loan_points, 0]
-          )
+            //대출 포인트 거래 내역 업데이트 ->
+            const insertloanpointtransactionhistory = await db.query(
+              'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+              ,[student_one.stu_id, "노쇼로인한초기화", -student_one.stu_current_loan_points, 0]
+            )
 
-          //학생 전체 노쇼 내역 업데이트
-          await db.query(
-            'insert into studentnoshowhistory(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
-            [student_one.stu_id, 2, insertloanpointtransactionhistory.insertId]
-          )
+            //학생 전체 노쇼 내역 업데이트
+            await db.query(
+              'insert into studentnoshowhistory(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
+              [student_one.stu_id, 2, insertloanpointtransactionhistory.insertId]
+            )
+          }                                                                                         
         }
       } else {
         console.log("현재 시간이 end_date 이전입니다.");
