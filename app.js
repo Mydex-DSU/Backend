@@ -27,6 +27,9 @@ var mydexscholarshipapplication = require('./routes/student/mydexscholarshipappl
 var remedialprogramapplication = require('./routes/student/remedialprogramapplication')
 var loan = require('./routes/student/loan')
 var stuprogram = require('./routes/student/stuprogram');
+
+//교수
+var guidestudent = require('./routes/professor/guidestudent')
 var bestinfo = require('./routes/student/bestinfo');
 var portfolios = require('./routes/student/portfolios');
 var categoris =require('./routes/student/categoris');
@@ -52,6 +55,7 @@ app.use('/pdf_uploads', express.static(path.join(__dirname, './pdf_uploads')));
 
 
 var mysql = require('mysql2');
+const { copyFileSync } = require('fs');
 
 var db = mysql.createConnection({
   host: '100.94.142.127',
@@ -89,7 +93,24 @@ app.use((req, res, next) => {
 });
 
 
+const initializeOnStart = async () => {
+  console.log("서버 시작 시 실행되는 초기화 작업");
+  
+  try {
+      // 예: 데이터베이스 초기화 작업
+      const result = await db.query('SELECT * FROM faculty');
 
+      // 추가적인 초기화 작업
+      session.start_date = new Date(result[0].start_date); // Date 객체로 변환
+      session.end_date = new Date(result[0].end_date);     // Date 객체로 변환
+    
+  } catch (error) {
+    console.error("초기화 작업 중 에러 발생:", error);
+  }
+};
+
+// 서버 시작 시 바로 실행
+initializeOnStart();
 
 const updateProgramStates = async () => {
   console.log("업데이트 프로그램 상태")
@@ -121,23 +142,17 @@ const updateProgramStates = async () => {
           program.program_status = '모집완료';  
       } else if (currentTime >= applicationStartTime){
           // 상태 변경 로직
-          if (currentTime >= applicationStartTime && currentTime <= applicationEndTime) {
-              program.program_status = '모집중'; 
-          } else if (currentTime >= operationStartTime && currentTime <= operationEndTime) {
-              program.program_status = '운영중';
-          } else if (currentTime > operationEndTime && currentTime < surveyStartTime) {
+          if (currentTime >= applicationStartTime && currentTime < applicationEndTime) {
+            program.program_status = '모집중'; 
+          } else if (currentTime >= applicationEndTime && currentTime < operationStartTime){
+            program.program_status = '모집완료'; 
+          } 
+          else if (currentTime >= operationStartTime && currentTime < operationEndTime) {
+            program.program_status = '운영중';
+
+
+          } else if (currentTime >= operationEndTime && currentTime < surveyStartTime) {
               program.program_status = '평가중';
-              // console.log("here")
-
-              //평가 중으로 된 거는 studentcompletesprogram에 학생의 값이 생기게 해야됨.
-              // const program_student = await db.query(
-              //   `SELECT ps.*, s.*
-              //    FROM studentprogramlist ps
-              //    JOIN student s ON ps.stu_id = s.stu_id
-              //    WHERE ps.program_id = ?`,
-              //   [program.program_id]
-              // );
-
               const programtype_name = await db.query(
                 'select programtype_name from programtype where programtype_id = ?',
                 [program.programtype_id]
@@ -162,7 +177,6 @@ const updateProgramStates = async () => {
                     //랜덤으로 학생의 프로그램 종류에 따라 얼마인지
                     const anyNotNull =
                     studentcompletecheck[0].attendance_rate === null &&
-                    studentcompletecheck[0].award_status === null &&
                     studentcompletecheck[0].participation_status === null &&
                     studentcompletecheck[0].report_submission_status === null;
                     if (anyNotNull)
@@ -197,17 +211,17 @@ const updateProgramStates = async () => {
                       }
                     }
                   }
-
-                 
               }
-                
-          } else if (currentTime >= surveyStartTime && currentTime <= surveyEndTime) {
+          } else if (currentTime >= surveyStartTime && currentTime < surveyEndTime) {
               program.program_status = '설문조사';
-          } else if (currentTime > surveyEndTime) {
+          } else if (currentTime >= surveyEndTime) {
               program.program_status = '종료';
               //1. 학생, 완료 프로그램에서 각 해당하는 어떤 설문조사에서 이 설문조사를 했는지 안 했는지에 대해 알아야됨
               //프로그램 아이디오 신청 목록에 있는 학생들 전부 순회
+              // console.log(studentProgram)
               for (const student of studentProgram){
+                // console.log(student.stu_id)
+                // console.log( program.program_id)
                 // console.log(student);
                 // console.log('-----------------------');
                 
@@ -216,7 +230,8 @@ const updateProgramStates = async () => {
                   'select stu_give_mydex_points,response_status_change_mydex_points,survey_response_status,no_show_reason_response_status from studentcompletesprogram where stu_id = ? and program_id = ?'
                   ,[student.stu_id, program.program_id]
                 )
-                // console.log("studentcompletecheck[0].stu_give_mydex_points : " + studentcompletecheck[0].stu_give_mydex_points)
+                // console.log(studentcompletecheck)
+                // console.log("studentcompletecheck[0].response_status_change_mydex_points : " + studentcompletecheck[0].response_status_change_mydex_points)
 
              
                 if (studentcompletecheck[0].response_status_change_mydex_points === null)
@@ -277,15 +292,15 @@ const updateProgramStates = async () => {
 
 
                     //학생 노쇼 카운트 증가 and 학생 노쇼 횟수가 2나누기 나머지 0일때 경고 횟수 +1 증가
-                    await db.query(
-                      `UPDATE student 
-                       SET 
-                         stu_no_show_count = stu_no_show_count + 1,
-                         stu_current_warning_count = LEAST(stu_current_warning_count + CASE 
-                           WHEN (stu_no_show_count + 1) % 2 = 0 THEN 1 ELSE 0 END, 4)
-                       WHERE stu_id = ?`,
-                      [student.stu_id]
-                    );
+                    // await db.query(
+                    //   `UPDATE student 
+                    //    SET 
+                    //      stu_no_show_count = stu_no_show_count + 1,
+                    //      stu_current_warning_count = LEAST(stu_current_warning_count + CASE 
+                    //        WHEN (stu_no_show_count + 1) % 2 = 0 THEN 1 ELSE 0 END, 4)
+                    //    WHERE stu_id = ?`,
+                    //   [student.stu_id]                                                                
+                    // );
 
                     //학생 전체 노쇼 내역 업데이트 비교과에서는 노쇼가 1씩 더해지는 게 맞음.
                     await db.query(
@@ -316,7 +331,7 @@ const updateProgramStates = async () => {
 
                       if (student_select[0].stu_current_loan_points > 0) //대출 포인트 있음
                       {
-                        if (fin_mydex_points > 0) // P > 0
+                        if (fin_mydex_points >= 0) // P > 0
                         {
                           if (student_select[0].stu_current_loan_points >= fin_mydex_points) // D >= P
                           {
@@ -362,11 +377,55 @@ const updateProgramStates = async () => {
                           const status = student_select[0].stu_current_loan_points + fin_mydex_points
                           if (status > 0) // M + P > 0 
                           {
+                            //대출 포인트 거래 내역 업데이트 ->
+                            const insertloanpointtransactionhistory = await db.query(
+                              'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                              ,[student.stu_id, "노쇼로인한초기화", -student_select[0].stu_current_loan_points, 0]
+                            )
 
+                            //학생 전체 노쇼 내역 업데이트 -> 비교과에서는 노쇼가 1씩 더해지는 게 맞음.
+                            await db.query(
+                              'insert into studentnoshowhistory(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
+                              [student.stu_id, 2, insertloanpointtransactionhistory.insertId]
+                            )
+
+                            //student 테이블에서 학생 대출 포인트 업데이트 ->
+                            await db.query(
+                              'UPDATE student SET stu_current_loan_points = 0, stu_current_mydex_points = stu_current_mydex_points + ?, stu_no_show_count = stu_no_show_count + 2 WHERE stu_id = ?;',
+                              [fin_mydex_points, student.stu_id]
+                            )
+
+                            //Mydex 온도 포인트 거래 내역
+                            await db.query(
+                              'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
+                              [student.stu_id, "비교과프로그램", fin_mydex_points, program.program_id]
+                            )
                           }
                           else if (status <= 0)  // M + P <= 0 
                           {
+                            //대출 포인트 거래 내역 업데이트 ->
+                            const insertloanpointtransactionhistory = await db.query(
+                              'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                              ,[student.stu_id, "노쇼로인한초기화", -student_select[0].stu_current_loan_points, 0]
+                            )
 
+                            //학생 전체 노쇼 내역 업데이트 -> 비교과에서는 노쇼가 2씩 더해지는 게 맞음.
+                            await db.query(
+                              'insert into studentnoshowhistory(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
+                              [student.stu_id, 2, insertloanpointtransactionhistory.insertId]
+                            )
+
+                            //student 테이블에서 학생 대출 포인트 업데이트 ->
+                            await db.query(
+                              'UPDATE student SET stu_current_loan_points = 0, stu_current_mydex_points = ?, stu_no_show_count = stu_no_show_count + 2 WHERE stu_id = ?;',
+                              [1, student.stu_id]
+                            )
+
+                            //Mydex 온도 포인트 거래 내역
+                            await db.query(
+                              'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
+                              [student.stu_id, "비교과프로그램", (-student_select[0].stu_current_loan_points) + 1, program.program_id]
+                            )
                           }
                         }
                       }
@@ -388,6 +447,11 @@ const updateProgramStates = async () => {
                     }
 
                 }
+                //학생 참여 완료로 변경하기
+                const students = await db.query(
+                  'UPDATE studentprogramlist set stu_program_status = ? where stu_id = ? and program_id = ?',
+                  ["참여완료", student.stu_id, program.program_id]
+                )
               }
           }
         }
@@ -398,6 +462,39 @@ const updateProgramStates = async () => {
           // 상태가 변경된 프로그램을 DB에 업데이트 (비동기 처리)
         await db.query('UPDATE programs SET program_status = ? WHERE program_id = ?', [program.program_status, program.program_id]);
       }
+
+
+      // end_date를 지났는지 확인
+      if (currentTime > session.end_date) {
+        console.log("현재 시간이 end_date를 지났습니다.");
+        const students = await db.query(
+          'select * from student'
+        )
+        for (const student_one of students) {
+          if (student_one.stu_current_loan_points !== 0){
+            //student 테이블에서 학생 대출 포인트 업데이트 ->
+            await db.query(
+              'UPDATE student SET stu_current_loan_points = 0, stu_no_show_count = stu_no_show_count + 2 WHERE stu_id = ?;',
+              [student_one.stu_id]
+            )
+
+            //대출 포인트 거래 내역 업데이트 ->
+            const insertloanpointtransactionhistory = await db.query(
+              'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+              ,[student_one.stu_id, "노쇼로인한초기화", -student_one.stu_current_loan_points, 0]
+            )
+
+            //학생 전체 노쇼 내역 업데이트
+            await db.query(
+              'insert into studentnoshowhistory(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
+              [student_one.stu_id, 2, insertloanpointtransactionhistory.insertId]
+            )
+          }                                                                                         
+        }
+      } else {
+        console.log("현재 시간이 end_date 이전입니다.");
+      }
+
       console.log('Program states updated successfully');
     } catch (error) {
       console.error('Error updating program states:', error);
@@ -433,10 +530,6 @@ app.use('/remedialprogram', remedialprogram);
 app.use('/loan', loan)
 app.use('/profile', profile)
 app.use('/stuprogram', stuprogram)
-app.use('/recommend', recommend)
-app.use('/bestinfo', bestinfo)
-app.use('/portfolios', portfolios)
-app.use('/categoris',categoris)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -453,5 +546,7 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
+
 
 module.exports = app;

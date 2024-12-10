@@ -1,14 +1,35 @@
 var express = require('express');
 var router = express.Router();
 
-/* 신청이 온 구제프로그램 조회 */
+/* 구제프로그램 신청 내역 전체 조회 */
 router.get('/', async (req, res) => {
     try 
     {
         const remedialprogramapplicationlist = await req.db.query(
             `SELECT r.*, s.stu_name
              FROM remedialprogramapplicationlist r
-             JOIN student s ON r.stu_id = s.stu_id`
+             JOIN student s ON r.stu_id = s.stu_id
+             `,
+        );
+        res.json({remedialprogramapplicationlist : remedialprogramapplicationlist})
+    }
+    catch(error)
+    {
+        console.log(error)
+    }
+});
+
+/* 신청이 온 구제프로그램 조회 */
+router.post('/select', async (req, res) => {
+    const {stu_id} = req.body
+    try 
+    {
+        const remedialprogramapplicationlist = await req.db.query(
+            `SELECT r.*, s.stu_name
+             FROM remedialprogramapplicationlist r
+             JOIN student s ON r.stu_id = s.stu_id
+             where r.stu_id = ?`,
+             [stu_id]
         );
         res.json({remedialprogramapplicationlist : remedialprogramapplicationlist})
     }
