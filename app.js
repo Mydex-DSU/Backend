@@ -58,9 +58,9 @@ var mysql = require('mysql2');
 const { copyFileSync } = require('fs');
 
 var db = mysql.createConnection({
-  host: '100.94.142.127',
-  user: 'JYP',
-  password: '1234',
+  host: 'localhost',
+  user: 'master',
+  password: '1111',
   database: 'mydex',
   port: 3306
 })
@@ -530,6 +530,12 @@ app.use('/remedialprogram', remedialprogram);
 app.use('/loan', loan)
 app.use('/profile', profile)
 app.use('/stuprogram', stuprogram)
+
+app.use('/recommend', recommend)
+app.use('/bestinfo', bestinfo)
+app.use('/portfolios', portfolios)
+app.use('/categoris',categoris)
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
