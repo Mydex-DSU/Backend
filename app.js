@@ -30,6 +30,12 @@ var stuprogram = require('./routes/student/stuprogram');
 
 //교수
 var guidestudent = require('./routes/professor/guidestudent')
+var bestinfo = require('./routes/student/bestinfo');
+var portfolios = require('./routes/student/portfolios');
+var categoris =require('./routes/student/categoris');
+
+//교수 
+var recommend = require('./routes/professor/recommend')
 
 
 const util = require('util');
@@ -497,7 +503,7 @@ const updateProgramStates = async () => {
 
 
 // cron.schedule('*/1 * * * *', updateProgramStates); // 매 1분마다 실행
-setInterval(updateProgramStates, 5000); // 30초 = 30000ms
+// setInterval(updateProgramStates, 5000); // 30초 = 30000ms
 
 
 // view engine setup
@@ -524,7 +530,12 @@ app.use('/remedialprogram', remedialprogram);
 app.use('/loan', loan)
 app.use('/profile', profile)
 app.use('/stuprogram', stuprogram)
-app.use('/guidestudent', guidestudent)
+
+app.use('/recommend', recommend)
+app.use('/bestinfo', bestinfo)
+app.use('/portfolios', portfolios)
+app.use('/categoris',categoris)
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
