@@ -27,6 +27,12 @@ var mydexscholarshipapplication = require('./routes/student/mydexscholarshipappl
 var remedialprogramapplication = require('./routes/student/remedialprogramapplication')
 var loan = require('./routes/student/loan')
 var stuprogram = require('./routes/student/stuprogram');
+var bestinfo = require('./routes/student/bestinfo');
+var portfolios = require('./routes/student/portfolios');
+var categoris =require('./routes/student/categoris');
+
+//교수 
+var recommend = require('./routes/professor/recommend')
 
 
 const util = require('util');
@@ -48,9 +54,9 @@ app.use('/pdf_uploads', express.static(path.join(__dirname, './pdf_uploads')));
 var mysql = require('mysql2');
 
 var db = mysql.createConnection({
-  host: 'localhost',
-  user: 'master',
-  password: '1111',
+  host: '100.94.142.127',
+  user: 'JYP',
+  password: '1234',
   database: 'mydex',
   port: 3306
 })
@@ -400,7 +406,7 @@ const updateProgramStates = async () => {
 
 
 // cron.schedule('*/1 * * * *', updateProgramStates); // 매 1분마다 실행
-setInterval(updateProgramStates, 5000); // 30초 = 30000ms
+// setInterval(updateProgramStates, 5000); // 30초 = 30000ms
 
 
 // view engine setup
@@ -427,6 +433,10 @@ app.use('/remedialprogram', remedialprogram);
 app.use('/loan', loan)
 app.use('/profile', profile)
 app.use('/stuprogram', stuprogram)
+app.use('/recommend', recommend)
+app.use('/bestinfo', bestinfo)
+app.use('/portfolios', portfolios)
+app.use('/categoris',categoris)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
