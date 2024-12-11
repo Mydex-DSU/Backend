@@ -8,11 +8,11 @@ router.get('/', async (req, res) => {
     const {stu_id} = req.body
     try 
     {
-        const mydexpointsscholarshipapplicationlist = await req.db.query(
-            'select * from mydexpointsscholarshipapplicationlist where stu_id = ?',
+        const mydex_point_scholarship_application_list = await req.db.query(
+            'select * from mydex_point_scholarship_application_list where stu_id = ?',
             [stu_id]
         )
-        res.json({mydexpointsscholarshipapplicationlist : mydexpointsscholarshipapplicationlist})
+        res.json({mydex_point_scholarship_application_list : mydex_point_scholarship_application_list})
     }
     catch(error)
     {
@@ -33,7 +33,7 @@ router.post('/application', async (req, res) => {
         )
 
         const insertmydexpoints = await req.db.query(
-            'insert into mydexpointsscholarshipapplicationlist(mydex_scholarship_application_period_id, stu_id, requested_scholarship_points) values (?,?,?)',
+            'insert into mydex_point_scholarship_application_list(mydex_scholarship_application_period_id, stu_id, requested_scholarship_points) values (?,?,?)',
             [mydex_scholarship_application_period_id, stu_id, requested_scholarship_points]
         )
         
@@ -75,7 +75,7 @@ router.post('/application', async (req, res) => {
 
         //마지막으로 학생이 한 거 mydex 온도 포인트 거래 내역에 기입
         await req.db.query(
-            'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
+            'insert into mydex_point_history(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
             [stu_id, "온도 포인트 장학금", requested_scholarship_points, insertmydexpoints.insertId]
         )
 

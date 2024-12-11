@@ -52,13 +52,13 @@ router.post('/noshowhistory', async (req, res) => {
     const {stu_id} = req.body
     try 
     {
-        const studentnoshowhistory = await req.db.query(
-            'select * from studentnoshowhistory where stu_id = ?',
+        const student_noshow_history = await req.db.query(
+            'select * from student_noshow_history where stu_id = ?',
             [stu_id]
         )
-        console.log(studentnoshowhistory)
+        console.log(student_noshow_history)
 
-        res.json({studentnoshowhistory : studentnoshowhistory})
+        res.json({student_noshow_history : student_noshow_history})
     }
     catch(error)
     {
@@ -128,7 +128,7 @@ router.post('/program/detail', async (req,res) => {
             program_detail.map(async (detail) => {
                 // 프로그램 현재 신청한 인원
                 const [program_application_student] = await req.db.query(
-                    'SELECT COUNT(*) AS program_application_student FROM studentprogramlist WHERE program_id = ?;',
+                    'SELECT COUNT(*) AS program_application_student FROM student_application_program_list WHERE program_id = ?;',
                     [program_id]
                 );
         

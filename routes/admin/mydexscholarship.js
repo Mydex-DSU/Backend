@@ -12,7 +12,7 @@ var logger = require('../../logger');
 router.get('/', async (req, res) => {
     try{
         const mydexscholarship = await req.db.query(
-            'select * from mydexscholarshipapplicationnotice'
+            'select * from mydex_scholarship_application_notice'
         )
         res.json({mydexscholarship : mydexscholarship});
     }
@@ -27,7 +27,7 @@ router.post('/registration', async (req, res) => {
 
     try{
         await req.db.query(
-            'insert into mydexscholarshipapplicationnotice(mydex_scholarship_application_period_year, mydex_application_start_dateTime, mydex_application_end_dateTime) values (?,?,?)',
+            'insert into mydex_scholarship_application_notice(mydex_scholarship_application_period_year, mydex_application_start_dateTime, mydex_application_end_dateTime) values (?,?,?)',
             [mydex_scholarship_application_period_year, mydex_application_start_dateTime, mydex_application_end_dateTime]
         )
 

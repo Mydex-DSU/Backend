@@ -7,7 +7,7 @@ router.post('/', async (req, res) => {
     try 
     {
         const loan_all = await req.db.query(
-            'select * from loanpointtransactionhistory where stu_id = ?',
+            'select * from loan_point_transaction_history where stu_id = ?',
             [stu_id]
         )
         res.json({loan_all : loan_all})
@@ -40,7 +40,7 @@ router.post('/application', async (req, res) => {
 
             //대출 포인트 거래 내역 업데이트
             await req.db.query(
-                'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
                 ,[stu_id, "전체 대출", loan_transaction_points, student[0].stu_current_loan_points + loan_transaction_points]
             )
             res.json({loan : student[0].stu_name + "의 전체 대출이 완료되었습니다."})
@@ -59,7 +59,7 @@ router.post('/application', async (req, res) => {
 
             //대출 포인트 거래 내역 업데이트
             await req.db.query(
-                'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
                 ,[stu_id, "추가 대출", loan_transaction_points, student[0].stu_current_loan_points + loan_transaction_points]
             )
 

@@ -191,7 +191,7 @@ router.post('/fin/detail', async (req, res) => {
         //프로그램에 신청 중인 학생 리스트 보내주기
         // const program_student = await req.db.query(
         //     `SELECT ps.*, s.*
-        //      FROM studentprogramlist ps
+        //      FROM student_application_program_list ps
         //      JOIN student s ON ps.stu_id = s.stu_id
         //      WHERE ps.program_id = ?`,
         //     [program_id]
@@ -200,9 +200,9 @@ router.post('/fin/detail', async (req, res) => {
         //프로그램에 신청중인 학생과 완료학생 묶어서 같이 보내줌
         const program_student = await req.db.query(
             `SELECT ps.*, s.*, sc.*
-             FROM studentprogramlist ps
+             FROM student_application_program_list ps
              JOIN student s ON ps.stu_id = s.stu_id
-             LEFT JOIN studentcompletesprogram sc ON ps.stu_id = sc.stu_id AND ps.program_id = sc.program_id
+             LEFT JOIN student_completes_program sc ON ps.stu_id = sc.stu_id AND ps.program_id = sc.program_id
              WHERE ps.program_id = ?`,
             [program_id]
         );
@@ -227,7 +227,7 @@ router.post('/fin/evaluation', async (req, res) => {
         )
 
         await req.db.query(
-            `UPDATE studentcompletesprogram SET stu_give_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
+            `UPDATE student_completes_program SET stu_give_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
             [stu_give_mydex_points, stu_id, program_id]
         );
 
@@ -237,7 +237,7 @@ router.post('/fin/evaluation', async (req, res) => {
         {
             console.log("1stu_give_mydex_points " + stu_give_mydex_points)
             await req.db.query(
-                `UPDATE studentcompletesprogram SET no_show_reason_response_status = ? WHERE stu_id = ? and program_id = ?`,
+                `UPDATE student_completes_program SET no_show_reason_response_status = ? WHERE stu_id = ? and program_id = ?`,
                 [false, stu_id, program_id]
             );
         }
@@ -245,7 +245,7 @@ router.post('/fin/evaluation', async (req, res) => {
         {
             console.log("2stu_give_mydex_points " + stu_give_mydex_points)
             await req.db.query(
-                `UPDATE studentcompletesprogram SET survey_response_status = ? WHERE stu_id = ? and program_id = ?`,
+                `UPDATE student_completes_program SET survey_response_status = ? WHERE stu_id = ? and program_id = ?`,
                 [false, stu_id, program_id]
             );
         }
@@ -267,7 +267,7 @@ router.post('/application/detail', async (req,res) => {
             [program_id]
         )
         const programdetail = await req.db.query(
-            'select * from studentprogramlist join student on studentprogramlist.stu_id = student.stu_id where program_id = ?',
+            'select * from student_application_program_list join student on student_application_program_list.stu_id = student.stu_id where program_id = ?',
             [program_id]
         )
 
