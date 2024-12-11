@@ -2,6 +2,8 @@ var express = require('express');
 var router = express.Router();
 
 
+    
+
 
 // 메인 우수졸업생 카드
     router.get('/', async (req, res) => {
@@ -11,28 +13,56 @@ var router = express.Router();
 
             // 현재 디비에 없는 값도 있어서 left join을 해둔 상태임.
             const grad_list = await req.db.query(
-    
-            
-                `SELECT 
-                    bgr.company_name, 
-                    bgr.field_of_study, 
-                    s.stu_name, 
-                    d.department_name, 
-                    f.faculty_name, 
-                    bgssc.views,
-                    sc.category_name AS specialty_category, 
-                    scd.detailed_name AS specialty_detail
-                FROM bestgraduaterecommendationlist bgr
-                LEFT JOIN student s ON bgr.stu_id = s.stu_id
-                LEFT JOIN department d ON s.department_name = d.department_name
-                LEFT JOIN faculty f ON d.faculty_id = f.faculty_id
-                LEFT JOIN bestgraduatesselectspecializationcategories bgssc ON bgr.stu_id = bgssc.stu_id
-                LEFT JOIN specialtycategory sc ON bgssc.specialty_category_id = sc.specialty_category_id
-                LEFT JOIN specialtycategorydetails scd ON sc.specialty_category_id = scd.specialty_category_id
-                ORDER BY bgssc.views DESC;
-            `);
-            res.json(grad_list)
 
+                `SELECT 
+    s.*,
+    s.department_name AS student_department_name,
+    d.department_name AS department_name,
+    f.faculty_name AS faculty_name,
+    bgsc.stu_id AS specialty_category_stu_id,
+    sc.category_name,
+    GROUP_CONCAT(scd.detailed_name) AS detailed_category_names
+FROM 
+    best_graduate_recommendation_list s
+JOIN 
+    department d ON s.department_name = d.department_name
+JOIN 
+    faculty f ON d.faculty_id = f.faculty_id
+LEFT JOIN 
+    best_graduate_select_specialty_category bgsc ON s.stu_id = bgsc.stu_id
+LEFT JOIN 
+    best_graduate_select_detailed_category bgdc ON s.stu_id = bgdc.stu_id
+LEFT JOIN 
+    specialty_category_details scd ON bgdc.specialty_detail_id = scd.specialty_detail_id
+LEFT JOIN 
+    specialty_category sc ON bgsc.specialty_category_id = sc.specialty_category_id
+GROUP BY 
+    s.stu_id, s.department_name, d.department_name, f.faculty_name, bgsc.stu_id;
+
+                `
+            );
+            return res.status(200).json(grad_list)
+
+
+
+//  `SELECT 
+//                     bgr.year_of_recommendation,
+//                     bgr.company_name, 
+//                     bgr.field_of_study, 
+//                     bgr.stu_name, 
+//                     bgr.department_name, 
+//                     f.faculty_name, 
+//                     bgr.views,
+//                     sc.category_name AS specialty_category, 
+//                     scd.detailed_name AS specialty_detail
+//                 FROM best_graduate_recommendation_list bgr
+//                 LEFT JOIN student s ON bgr.stu_id = s.stu_id
+//                 LEFT JOIN department d ON s.department_name = d.department_name
+//                 LEFT JOIN faculty f ON d.faculty_id = f.faculty_id
+//                 LEFT JOIN best_graduate_select_specialty_category bgssc ON bgr.stu_id = bgssc.stu_id
+//                 LEFT JOIN specialty_category sc ON bgssc.specialty_category_id = sc.specialty_category_id
+//                 LEFT JOIN specialty_category_details scd ON sc.specialty_category_id = scd.specialty_category_id
+//                 ORDER BY bgr.views DESC;`
 
 
             // 조인을 하면 현재 없는 값이 있어서 데이터가 안 날라감 
@@ -45,7 +75,7 @@ var router = express.Router();
             //     bgr.graduate_school_admission, 
             //     scd.detailed_name, 
             //     sc.category_name
-            //  FROM bestgraduaterecommendationlist bgr
+            //  FROM best_graduate_recommendation_list bgr
             //  JOIN student s ON bgr.stu_id = s.stu_id
             //  JOIN department d ON s.department_name = d.department_name  
             //  JOIN faculty f ON d.faculty_id = f.faculty_id 
@@ -54,6 +84,8 @@ var router = express.Router();
             //  JOIN specialtycategorydetails scd ON bgd.specialization_detail_id = scd.specialty_detail_id 
             //  JOIN specialtycategory sc ON scd.specialty_category_id = sc.specialty_category_id
             //  WHERE bgr.stu_id = ?`
+
+            
 
             // ,[stu_id] 
             // );
@@ -164,7 +196,7 @@ router.get('/list', async (req, res) => {
         );
 
 
-        res.json(faculty_name, choice_program, views,companyOrGraduate, studentName, categorys);
+        res.json(faculty_name, choice_program,companyOrGraduate, studentName, categorys);
         
 
 

@@ -35,25 +35,33 @@ try{
 
     //  선택한 카테고리를 DB에 저장
     router.post('/', async (req, res)=>{
-        const {stu_id} = req.body
+        const {stu_id,specialty_category_id ,specialization_detail_id } = req.body
 
 
         try{
 
-           // 카테고리
-           await req.db.query(
-            `insert into bestgraduatesselectspecializationcategories(specialty_category_id, stu_id) value(?, ?ß)`
-            , [stu_id, specialty_category_id]
+            if (!stu_id || !specialty_category_id || !specialization_detail_id) {
+                return res.status(400).json({ error: "필수 데이터(stu_id, specialty_category_id, specialization_detail_id)가 누락되었습니다." });
+            }
+
+          // 카테고리 저장
+          const categoryInsertResult = await req.db.query(
+            `INSERT INTO bestgraduatesselectspecializationcategories (specialty_category_id, stu_id) 
+             VALUES (?, ?)`,
+            [specialty_category_id, stu_id]
         );
 
+        console.log("Category inserted:", categoryInsertResult);
 
-            //  상세카테고리
-            await req.db.query(
-                `insert into bestgraduateselectiondetailedcategory(stu_id, specialization_detail_id) value (?, ?)`
-                , [stu_id, specialization_detail_id]
-            );
-            
+        // 상세 카테고리 저장
+        const detailInsertResult = await req.db.query(
+            `INSERT INTO bestgraduateselectiondetailedcategory (stu_id, specialization_detail_id) 
+             VALUES (?, ?)`,
+            [stu_id, specialization_detail_id]
+        );
         
+        console.log("Detailed category inserted:", detailInsertResult);
+
 
             }
             catch(error)

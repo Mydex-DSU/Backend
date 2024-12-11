@@ -58,12 +58,21 @@ var mysql = require('mysql2');
 const { copyFileSync } = require('fs');
 
 var db = mysql.createConnection({
-  host: 'localhost',
-  user: 'master',
-  password: '1111',
+  host: '100.94.142.127',
+  user: 'JYP',
+  password: '1234',
   database: 'mydex',
   port: 3306
 })
+
+
+  // var db = mysql.createConnection({
+  //   host: 'localhost',
+  //   user: 'master',
+  //   password: '1111',
+  //   database: 'mydex',
+  //   port: 3306
+  // })
 
 db.connect(function(err) {
   if (err) {
