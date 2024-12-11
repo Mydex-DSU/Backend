@@ -15,6 +15,11 @@ var schoolbudget = require('./routes/admin/schoolbudget');
 var faculty = require('./routes/admin/faculty');
 var programs = require('./routes/admin/programs');
 
+//학생
+var programapplication = require('./routes/student/application');
+var survey = require('./routes/student/survey');
+
+
 const util = require('util');
 
 
@@ -90,7 +95,7 @@ const updateProgramStates = async () => {
 
       // 학생 프로그램 리스트 조회 (비동기 처리)
       const studentProgram = await db.query('SELECT * FROM studentprogramlist WHERE program_id = ?', [program.program_id]);
-
+      // console.log(studentProgram)
       // 프로그램 최대 인원 확인 (비동기 처리 필요)
       if (program.program_max_participants && studentProgram.length >= program.program_max_participants) {
           program.program_status = '모집완료';  
@@ -102,6 +107,7 @@ const updateProgramStates = async () => {
               program.program_status = '운영중';
           } else if (currentTime > operationEndTime && currentTime < surveyStartTime) {
               program.program_status = '평가중';
+              // console.log("here")
 
               //평가 중으로 된 거는 studentcompletesprogram에 학생의 값이 생기게 해야됨.
               // const program_student = await db.query(
@@ -116,26 +122,187 @@ const updateProgramStates = async () => {
                 'select programtype_name from programtype where programtype_id = ?',
                 [program.programtype_id]
               )
-  
               for (const student of studentProgram){
                 const studentcompletecheck = await db.query(
-                  'select stu_id from studentcompletesprogram where stu_id = ?'
-                  ,[student.stu_id]
+                  'select * from studentcompletesprogram where stu_id = ? and program_id = ?'
+                  ,[student.stu_id, program.program_id]
                 )
-                if (studentcompletecheck.length === 0)
-                {
-                  await db.query(
-                    ` Insert into studentcompletesprogram(
-                    stu_id, program_id, programtype_name) 
-                    values (?,?,?)`,
-                    [student.stu_id, student.program_id, programtype_name[0].programtype_name ]);
+                // console.log(studentcompletecheck)
+                  //프로그램이 평가중이 되면 학생들 평가해야하니 insert
+                  if (studentcompletecheck.length === 0)
+                  {
+                    
+                    const insertcomple = await db.query(
+                      ` Insert into studentcompletesprogram(
+                      stu_id, program_id, programtype_name) 
+                      values (?,?,?)`,
+                      [student.stu_id, student.program_id, programtype_name[0].programtype_name ]);
                   }
-                }
+                  else{
+                    //랜덤으로 학생의 프로그램 종류에 따라 얼마인지
+                    const anyNotNull =
+                    studentcompletecheck[0].attendance_rate === null &&
+                    studentcompletecheck[0].award_status === null &&
+                    studentcompletecheck[0].participation_status === null &&
+                    studentcompletecheck[0].report_submission_status === null;
+                    if (anyNotNull)
+                    {
+                      //각 프로그램에 따른 참여율 기입
+                      if (programtype_name[0].programtype_name === "특강") //출석률
+                      {
+                        // 0~100 사이 난수 생성
+                        const randomNumber = Math.floor(Math.random() * 101); // 0에서 100까지의 정수
+                        console.log("Generated Random Number: ", randomNumber);
+                        //attendance_rate
+                        await db.query(
+                          `UPDATE studentcompletesprogram SET attendance_rate = ? WHERE stu_id = ? and program_id = ?`,
+                          [randomNumber, student.stu_id, program.program_id]
+                        );
+                      }
+                      else if (programtype_name[0].programtype_name === "학습공동체활동") // 보고서 제출 여부
+                      {
+                        const randomBoolean = Math.random() < 0.5; // 50% 확률로 true 또는 false
+                        await db.query(
+                          `UPDATE studentcompletesprogram SET report_submission_status = ? WHERE stu_id = ? and program_id = ?`,
+                          [randomBoolean, student.stu_id, program.program_id]
+                        );
+                      }
+                      else if (programtype_name[0].programtype_name === "캠프및워크숍" || programtype_name[0].programtype_name === "클리닉참여" ||programtype_name[0].programtype_name === "견학") // 참여여부
+                      {
+                        const randomBoolean = Math.random() < 0.5; // 50% 확률로 true 또는 false
+                        await db.query(
+                          `UPDATE studentcompletesprogram SET participation_status = ? WHERE stu_id = ? and program_id = ?`,
+                          [randomBoolean, student.stu_id, program.program_id]
+                        );
+                      }
+                    }
+                  }
+
+                 
+              }
                 
           } else if (currentTime >= surveyStartTime && currentTime <= surveyEndTime) {
               program.program_status = '설문조사';
           } else if (currentTime > surveyEndTime) {
-              program.program_status = '종료';  // 신청 전 상태
+              program.program_status = '종료';
+              //1. 학생, 완료 프로그램에서 각 해당하는 어떤 설문조사에서 이 설문조사를 했는지 안 했는지에 대해 알아야됨
+              //프로그램 아이디오 신청 목록에 있는 학생들 전부 순회
+              for (const student of studentProgram){
+                // console.log(student);
+                // console.log('-----------------------');
+                
+                //학생의 완료 프로그램 테이블 studentcompletesprogram에 기입
+                const studentcompletecheck = await db.query(
+                  'select stu_give_mydex_points,response_status_change_mydex_points,survey_response_status,no_show_reason_response_status from studentcompletesprogram where stu_id = ? and program_id = ?'
+                  ,[student.stu_id, program.program_id]
+                )
+                // console.log("studentcompletecheck[0].stu_give_mydex_points : " + studentcompletecheck[0].stu_give_mydex_points)
+
+             
+                if (studentcompletecheck[0].response_status_change_mydex_points === null)
+                {
+                  console.log("설문조사 판별 시작")
+                  let fin_mydex_points = null;
+                  //완료 프로그램에 해당하고 그 학생이 평가를 다 받은 상황 studentcompletecheck
+                  if (studentcompletecheck[0].stu_give_mydex_points !== null && parseInt(studentcompletecheck[0].stu_give_mydex_points) > 0)
+                  {
+                    console.log("일반 설문조사 했어?")
+                    console.log(studentcompletecheck[0].survey_response_status)
+                    console.log("----------------------------")
+                    if (studentcompletecheck[0].survey_response_status === 1) // 일반 설문조사 참여
+                    {
+                      console.log("일반 설문조사 안 했어")
+                      //학생의 mydex 온도 포인트에 기입
+                      await db.query(
+                        `UPDATE studentcompletesprogram SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
+                        [studentcompletecheck[0].stu_give_mydex_points, student.stu_id, program.program_id]
+                      );
+                      fin_mydex_points = parseInt(studentcompletecheck[0].stu_give_mydex_points);
+                    }
+                    else { // 일반 설문조사 참여 안함
+                      console.log("일반 설문조사 안 했어")
+                      await db.query(
+                        `UPDATE studentcompletesprogram SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
+                        [0, student.stu_id, program.program_id]
+                      );
+                      fin_mydex_points = 0;
+                    }
+                  }
+                  else if(studentcompletecheck[0].stu_give_mydex_points !== null && parseInt(studentcompletecheck[0].stu_give_mydex_points) < 0) // 노쇼인 학생
+                  {
+                    console.log("노쇼 설문조사 판별 시작")
+                    console.log("herereh")
+                    console.log(studentcompletecheck[0])
+                    console.log(studentcompletecheck)
+                    console.log(studentcompletecheck[0].no_show_reason_response_status)
+                    console.log("--------------------------------------------------------")
+                    if (studentcompletecheck[0].no_show_reason_response_status === 1) // 노쇼 설문조사 참여
+                    {
+                      console.log("참여 In")
+                      //학생의 mydex 온도 포인트에 기입
+                      await db.query(
+                        `UPDATE studentcompletesprogram SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
+                        [studentcompletecheck[0].stu_give_mydex_points + 1, student.stu_id, program.program_id]
+                      );
+                      fin_mydex_points = studentcompletecheck[0].stu_give_mydex_points + 1;
+                    }
+                    else { // 일반 설문조사 참여 안함
+                      console.log("참여 out")
+                      await db.query(
+                        `UPDATE studentcompletesprogram SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
+                        [studentcompletecheck[0].stu_give_mydex_points, student.stu_id, program.program_id]
+                      );
+                      fin_mydex_points = studentcompletecheck[0].stu_give_mydex_points;
+                    }
+
+
+                    //학생 노쇼 카운트 증가 and 학생 노쇼 횟수가 2나누기 나머지 0일때 경고 횟수 +1 증가
+                    await db.query(
+                      `UPDATE student 
+                       SET 
+                         stu_no_show_count = stu_no_show_count + 1,
+                         stu_current_warning_count = LEAST(stu_current_warning_count + CASE 
+                           WHEN (stu_no_show_count + 1) % 2 = 0 THEN 1 ELSE 0 END, 4)
+                       WHERE stu_id = ?`,
+                      [student.stu_id]
+                    );
+
+                    //학생 전체 노쇼 내역 업데이트 비교과에서는 노쇼가 1씩 더해지는 게 맞음.
+                    await db.query(
+                      'insert into studentnoshowhistory(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
+                      [student.stu_id, 1, program.program_id]
+                    )
+
+                    //학생 경고 포인트가 1,2가 있을 떄 -1씩 더 부여
+                    const stu_current_warning_count = await db.query(
+                      'select stu_current_warning_count from student where stu_id = ?',
+                      [student.stu_id]
+                    )
+                    if (stu_current_warning_count[0].stu_current_warning_count === 1 || stu_current_warning_count[0].stu_current_warning_count === 2){
+                      fin_mydex_points = fin_mydex_points + -1;
+                    }
+                  }
+
+                    //3. 학생 mydex 온도 포인트 부여하구 거래 내역
+                    if (fin_mydex_points !== null)
+                    {
+                      console.log(fin_mydex_points)
+                      await db.query(
+                        `UPDATE student 
+                         SET stu_current_mydex_points = GREATEST(stu_current_mydex_points + ?, 1)
+                         WHERE stu_id = ?`,
+                        [fin_mydex_points, student.stu_id]
+                      );
+
+                      //4. 학생 mydex 온도 포인트 거래 내역에 값 삽입.
+                      await db.query(
+                        'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
+                        [student.stu_id, "비교과프로그램", fin_mydex_points, program.program_id]
+                      )
+                    }
+
+                }
+              }
           }
         }
         else 
@@ -171,6 +338,8 @@ app.use('/login', loginRotuer);
 app.use('/schoolbudget', schoolbudget);
 app.use('/faculty', faculty);
 app.use('/programs', programs);
+app.use('/application', programapplication);
+app.use('/survey', survey)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
