@@ -8,7 +8,7 @@ router.post('/', async (req, res) => {
     {
         const student_join_programs = await req.db.query(
             `SELECT sp.*, p.program_application_start_time, p.program_application_end_time, p.program_operation_start_time, p.program_operation_end_time, p.program_poster_image, p.program_mydex_points, p.program_status, p.program_name
-             FROM studentprogramlist sp
+             FROM student_application_program_list sp
              JOIN programs p ON sp.program_id = p.program_id
              WHERE sp.stu_id = ? and stu_program_status = "참여중"`,
             [stu_id]

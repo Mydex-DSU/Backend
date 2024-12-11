@@ -11,7 +11,7 @@ router.post('/', async (req, res) => {
             [stu_id]
         )
         await req.db.query(
-            'insert into studentprogramlist(stu_id, program_id, stu_program_status) values(?,?,?)',
+            'insert into student_application_program_list(stu_id, program_id, stu_program_status) values(?,?,?)',
             [stu_id, program_id, '참여중']
         )
 

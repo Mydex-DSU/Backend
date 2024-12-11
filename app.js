@@ -135,7 +135,7 @@ const updateProgramStates = async () => {
       // console.log(applicationStartTime)
 
       // 학생 프로그램 리스트 조회 (비동기 처리)
-      const studentProgram = await db.query('SELECT * FROM studentprogramlist WHERE program_id = ?', [program.program_id]);
+      const studentProgram = await db.query('SELECT * FROM student_application_program_list WHERE program_id = ?', [program.program_id]);
       // console.log(studentProgram)
       // 프로그램 최대 인원 확인 (비동기 처리 필요)
       if (program.program_max_participants && studentProgram.length >= program.program_max_participants) {
@@ -159,7 +159,7 @@ const updateProgramStates = async () => {
               )
               for (const student of studentProgram){
                 const studentcompletecheck = await db.query(
-                  'select * from studentcompletesprogram where stu_id = ? and program_id = ?'
+                  'select * from student_completes_program where stu_id = ? and program_id = ?'
                   ,[student.stu_id, program.program_id]
                 )
                 // console.log(studentcompletecheck)
@@ -168,7 +168,7 @@ const updateProgramStates = async () => {
                   {
                     
                     const insertcomple = await db.query(
-                      ` Insert into studentcompletesprogram(
+                      ` Insert into student_completes_program(
                       stu_id, program_id, programtype_name) 
                       values (?,?,?)`,
                       [student.stu_id, student.program_id, programtype_name[0].programtype_name ]);
@@ -189,7 +189,7 @@ const updateProgramStates = async () => {
                         console.log("Generated Random Number: ", randomNumber);
                         //attendance_rate
                         await db.query(
-                          `UPDATE studentcompletesprogram SET attendance_rate = ? WHERE stu_id = ? and program_id = ?`,
+                          `UPDATE student_completes_program SET attendance_rate = ? WHERE stu_id = ? and program_id = ?`,
                           [randomNumber, student.stu_id, program.program_id]
                         );
                       }
@@ -197,7 +197,7 @@ const updateProgramStates = async () => {
                       {
                         const randomBoolean = Math.random() < 0.5; // 50% 확률로 true 또는 false
                         await db.query(
-                          `UPDATE studentcompletesprogram SET report_submission_status = ? WHERE stu_id = ? and program_id = ?`,
+                          `UPDATE student_completes_program SET report_submission_status = ? WHERE stu_id = ? and program_id = ?`,
                           [randomBoolean, student.stu_id, program.program_id]
                         );
                       }
@@ -205,7 +205,7 @@ const updateProgramStates = async () => {
                       {
                         const randomBoolean = Math.random() < 0.5; // 50% 확률로 true 또는 false
                         await db.query(
-                          `UPDATE studentcompletesprogram SET participation_status = ? WHERE stu_id = ? and program_id = ?`,
+                          `UPDATE student_completes_program SET participation_status = ? WHERE stu_id = ? and program_id = ?`,
                           [randomBoolean, student.stu_id, program.program_id]
                         );
                       }
@@ -227,7 +227,7 @@ const updateProgramStates = async () => {
                 
                 //학생의 완료 프로그램 테이블 studentcompletesprogram에 기입
                 const studentcompletecheck = await db.query(
-                  'select stu_give_mydex_points,response_status_change_mydex_points,survey_response_status,no_show_reason_response_status from studentcompletesprogram where stu_id = ? and program_id = ?'
+                  'select stu_give_mydex_points,response_status_change_mydex_points,survey_response_status,no_show_reason_response_status from student_completes_program where stu_id = ? and program_id = ?'
                   ,[student.stu_id, program.program_id]
                 )
                 // console.log(studentcompletecheck)
@@ -249,7 +249,7 @@ const updateProgramStates = async () => {
                       console.log("일반 설문조사 안 했어")
                       //학생의 mydex 온도 포인트에 기입
                       await db.query(
-                        `UPDATE studentcompletesprogram SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
+                        `UPDATE student_completes_program SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
                         [studentcompletecheck[0].stu_give_mydex_points, student.stu_id, program.program_id]
                       );
                       fin_mydex_points = parseInt(studentcompletecheck[0].stu_give_mydex_points);
@@ -257,7 +257,7 @@ const updateProgramStates = async () => {
                     else { // 일반 설문조사 참여 안함
                       console.log("일반 설문조사 안 했어")
                       await db.query(
-                        `UPDATE studentcompletesprogram SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
+                        `UPDATE student_completes_program SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
                         [0, student.stu_id, program.program_id]
                       );
                       fin_mydex_points = 0;
@@ -276,7 +276,7 @@ const updateProgramStates = async () => {
                       console.log("참여 In")
                       //학생의 mydex 온도 포인트에 기입
                       await db.query(
-                        `UPDATE studentcompletesprogram SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
+                        `UPDATE student_completes_program SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
                         [studentcompletecheck[0].stu_give_mydex_points + 1, student.stu_id, program.program_id]
                       );
                       fin_mydex_points = studentcompletecheck[0].stu_give_mydex_points + 1;
@@ -284,7 +284,7 @@ const updateProgramStates = async () => {
                     else { // 일반 설문조사 참여 안함
                       console.log("참여 out")
                       await db.query(
-                        `UPDATE studentcompletesprogram SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
+                        `UPDATE student_completes_program SET response_status_change_mydex_points = ? WHERE stu_id = ? and program_id = ?`,
                         [studentcompletecheck[0].stu_give_mydex_points, student.stu_id, program.program_id]
                       );
                       fin_mydex_points = studentcompletecheck[0].stu_give_mydex_points;
@@ -304,7 +304,7 @@ const updateProgramStates = async () => {
 
                     //학생 전체 노쇼 내역 업데이트 비교과에서는 노쇼가 1씩 더해지는 게 맞음.
                     await db.query(
-                      'insert into studentnoshowhistory(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
+                      'insert into student_noshow_history(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
                       [student.stu_id, 1, program.program_id]
                     )
 
@@ -345,7 +345,7 @@ const updateProgramStates = async () => {
 
                             //대출 포인트 거래 내역 업데이트
                             await db.query(
-                                'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                                'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
                                 ,[student.stu_id, "상환", fin_mydex_points, student_select[0].stu_current_loan_points + fin_mydex_points]
                             )
                           }
@@ -361,13 +361,13 @@ const updateProgramStates = async () => {
 
                             //대출 포인트 거래 내역 업데이트
                             await db.query(
-                                'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                                'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
                                 ,[student.stu_id, "상환", -student_select[0].stu_current_loan_points, 0]
                             )
 
                             //Mydex 온도 포인트 거래 내역
                             await db.query(
-                              'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
+                              'insert into mydex_point_history(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
                               [student.stu_id, "비교과프로그램", finDP, program.program_id]
                             )
                           }
@@ -379,13 +379,13 @@ const updateProgramStates = async () => {
                           {
                             //대출 포인트 거래 내역 업데이트 ->
                             const insertloanpointtransactionhistory = await db.query(
-                              'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                              'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
                               ,[student.stu_id, "노쇼로인한초기화", -student_select[0].stu_current_loan_points, 0]
                             )
 
                             //학생 전체 노쇼 내역 업데이트 -> 비교과에서는 노쇼가 1씩 더해지는 게 맞음.
                             await db.query(
-                              'insert into studentnoshowhistory(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
+                              'insert into student_noshow_history(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
                               [student.stu_id, 2, insertloanpointtransactionhistory.insertId]
                             )
 
@@ -397,7 +397,7 @@ const updateProgramStates = async () => {
 
                             //Mydex 온도 포인트 거래 내역
                             await db.query(
-                              'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
+                              'insert into mydex_point_history(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
                               [student.stu_id, "비교과프로그램", fin_mydex_points, program.program_id]
                             )
                           }
@@ -405,13 +405,13 @@ const updateProgramStates = async () => {
                           {
                             //대출 포인트 거래 내역 업데이트 ->
                             const insertloanpointtransactionhistory = await db.query(
-                              'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                              'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
                               ,[student.stu_id, "노쇼로인한초기화", -student_select[0].stu_current_loan_points, 0]
                             )
 
                             //학생 전체 노쇼 내역 업데이트 -> 비교과에서는 노쇼가 2씩 더해지는 게 맞음.
                             await db.query(
-                              'insert into studentnoshowhistory(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
+                              'insert into student_noshow_history(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
                               [student.stu_id, 2, insertloanpointtransactionhistory.insertId]
                             )
 
@@ -423,7 +423,7 @@ const updateProgramStates = async () => {
 
                             //Mydex 온도 포인트 거래 내역
                             await db.query(
-                              'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
+                              'insert into mydex_point_history(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
                               [student.stu_id, "비교과프로그램", (-student_select[0].stu_current_loan_points) + 1, program.program_id]
                             )
                           }
@@ -440,7 +440,7 @@ const updateProgramStates = async () => {
 
                         //4. 학생 mydex 온도 포인트 거래 내역에 값 삽입.
                         await db.query(
-                          'insert into mydexpointhistory(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
+                          'insert into mydex_point_history(stu_id, mydexpointshistory_reason_name, mydexpointshistory_recv_count, mydexpointshistory_reason_number) values (?, ?, ?, ?)',
                           [student.stu_id, "비교과프로그램", fin_mydex_points, program.program_id]
                         )
                       }
@@ -449,7 +449,7 @@ const updateProgramStates = async () => {
                 }
                 //학생 참여 완료로 변경하기
                 const students = await db.query(
-                  'UPDATE studentprogramlist set stu_program_status = ? where stu_id = ? and program_id = ?',
+                  'UPDATE student_application_program_list set stu_program_status = ? where stu_id = ? and program_id = ?',
                   ["참여완료", student.stu_id, program.program_id]
                 )
               }
@@ -480,13 +480,13 @@ const updateProgramStates = async () => {
 
             //대출 포인트 거래 내역 업데이트 ->
             const insertloanpointtransactionhistory = await db.query(
-              'insert into loanpointtransactionhistory(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+              'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
               ,[student_one.stu_id, "노쇼로인한초기화", -student_one.stu_current_loan_points, 0]
             )
 
             //학생 전체 노쇼 내역 업데이트
             await db.query(
-              'insert into studentnoshowhistory(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
+              'insert into student_noshow_history(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
               [student_one.stu_id, 2, insertloanpointtransactionhistory.insertId]
             )
           }                                                                                         
@@ -503,7 +503,7 @@ const updateProgramStates = async () => {
 
 
 // cron.schedule('*/1 * * * *', updateProgramStates); // 매 1분마다 실행
-// setInterval(updateProgramStates, 5000); // 30초 = 30000ms
+setInterval(updateProgramStates, 5000); // 30초 = 30000ms
 
 
 // view engine setup
@@ -530,6 +530,7 @@ app.use('/remedialprogram', remedialprogram);
 app.use('/loan', loan)
 app.use('/profile', profile)
 app.use('/stuprogram', stuprogram)
+app.use('/guidestudent', guidestudent)
 
 app.use('/recommend', recommend)
 app.use('/bestinfo', bestinfo)

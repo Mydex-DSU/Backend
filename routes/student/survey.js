@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
         )
 
         await req.db.query(
-            `UPDATE studentcompletesprogram SET survey_response_status = ? WHERE stu_id = ? and program_id = ?`,
+            `UPDATE student_completes_program SET survey_response_status = ? WHERE stu_id = ? and program_id = ?`,
             [1, stu_id, program_id]
         )
         res.json({message : student_info[0].stu_name + "학생이 설문조사를 완료하였습니다."})
@@ -34,7 +34,7 @@ router.post('/noshow', async (req, res) => {
         )
 
         await req.db.query(
-            `UPDATE studentcompletesprogram SET noshowreasoncategories_id = ?, no_show_reason_response_status = ? WHERE stu_id = ? and program_id = ?`,
+            `UPDATE student_completes_program SET noshowreasoncategories_id = ?, no_show_reason_response_status = ? WHERE stu_id = ? and program_id = ?`,
             [noshowreasoncategories_id, 1, stu_id, program_id]
         )
         res.json({message : student_info[0].stu_name + "학생이 노쇼 설문조사를 응답하였습니다."})
@@ -46,13 +46,13 @@ router.post('/noshow', async (req, res) => {
 });
 
 /* 노쇼 카테고리 설문조사 조회 */
-router.get('/noshowreasoncategories', async (req, res) => {
+router.get('/noshow_reason_category', async (req, res) => {
     try 
     {
-        const noshowreasoncategories = await req.db.query(
-            'select * from noshowreasoncategories',
+        const noshow_reason_category = await req.db.query(
+            'select * from noshow_reason_category',
         )
-        res.json({noshowreasoncategories : noshowreasoncategories})
+        res.json({noshow_reason_category : noshow_reason_category})
     }
     catch(error)
     {

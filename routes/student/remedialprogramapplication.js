@@ -9,11 +9,11 @@ router.get('/', async (req, res) => {
     const {stu_id} = req.body
     try 
     {
-        const remedialprogramapplicationlist = await req.db.query(
-            'select * from remedialprogramapplicationlist where stu_id = ?',
+        const remedial_program_application_list = await req.db.query(
+            'select * from remedial_program_application_list where stu_id = ?',
             [stu_id]
         )
-        res.json({remedialprogramapplicationlist : remedialprogramapplicationlist})
+        res.json({remedial_program_application_list : remedial_program_application_list})
     }
     catch(error)
     {
@@ -68,7 +68,7 @@ router.post('/application', upload.single('qualification_documents'), async (req
 
         // 데이터베이스에 저장
         await req.db.query(
-            `INSERT INTO remedialprogramapplicationlist(stu_id, qualification_documents, remedialprogram_name)
+            `INSERT INTO remedial_program_application_list(stu_id, qualification_documents, remedialprogram_name)
              VALUES (?, ?, ?)`,
             [stu_id, qualification_documents, remedialprogram_name]
         );
