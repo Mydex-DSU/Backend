@@ -15,6 +15,9 @@ var schoolbudget = require('./routes/admin/schoolbudget');
 var faculty = require('./routes/admin/faculty');
 var programs = require('./routes/admin/programs');
 
+//관리자
+var mydexscholarship = require('./routes/admin/mydexscholarship');
+
 //학생
 var programapplication = require('./routes/student/application');
 var survey = require('./routes/student/survey');
@@ -340,6 +343,7 @@ app.use('/faculty', faculty);
 app.use('/programs', programs);
 app.use('/application', programapplication);
 app.use('/survey', survey)
+app.use('/mydexscholarship', mydexscholarship);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
