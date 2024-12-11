@@ -287,15 +287,157 @@ router.post('/application/detail', async (req,res) => {
     }
 })
 
-/* 프로그램 종류별 노쇼 비율 그래프 */
+/* 프로그램 종류별 노쇼 비율 그래프와 막대 그래프 */
 router.get('/noshowgraph', async (req,res) => {
 
     try{
-        const programtype = await req.db.query(
-            'select * from programtype',
-        )
+        const allProgramTypes = await req.db.query(
+            'SELECT programtype_id, programtype_name FROM programtype'
+          );
 
-        res.json({programtype: programtype})
+        const programtype = await req.db.query(
+            'SELECT p.* , sc.programtype_name, pt.programtype_name as program_name, COUNT(sc.program_id) AS 전체_참여_인원, \
+            SUM(CASE WHEN sc.stu_give_mydex_points < 0 AND sc.stu_give_mydex_points IS NOT NULL THEN 1 ELSE 0 END) AS 노쇼_인원 \
+            FROM programs p JOIN student_completes_program sc ON p.program_id = sc.program_id \
+            JOIN programtype pt ON p.programtype_id = pt.programtype_id \
+            where p.program_status = "종료" \
+            GROUP BY pt.programtype_name \
+            ORDER BY pt.programtype_name\
+            ',
+        )
+        console.log(programtype)
+
+
+     // 3. 결과를 매핑하여 없는 프로그램 종류 채우기
+     const programTypeMap = programtype.reduce((acc, item) => {
+        acc[item.program_name] = {
+          program_name: item.program_name,
+          전체_참여_인원: item.전체_참여_인원,
+          노쇼_인원: item.노쇼_인원
+        };
+        return acc;
+      }, {});
+  
+      // 4. 모든 프로그램 종류를 기준으로 기본 데이터 생성
+      const filledProgramTypes = allProgramTypes.map((type) => {
+        if (programTypeMap[type.programtype_name]) {
+          // 기존 데이터가 있는 경우 그대로 사용
+          return programTypeMap[type.programtype_name];
+        } else {
+          // 데이터가 없는 경우 기본값 추가
+          return {
+            program_name: type.programtype_name,
+            전체_참여_인원: 0,
+            노쇼_인원: 0
+          };
+        }
+      });
+  
+      // 5. 전체 노쇼 인원의 합 계산
+    const totalNoShow = filledProgramTypes.reduce((sum, type) => sum + Number(type.노쇼_인원), 0); // 명시적으로 숫자 변환
+    console.log("총 노쇼 인원:", totalNoShow); // 확인: 명확하게 출력
+
+      console.log(totalNoShow)
+      // 6. 노쇼 비율 계산 및 정규화
+      const normalizedProgramTypes = filledProgramTypes.map((type) => {
+        const 노쇼_비율 = totalNoShow > 0 ? (type.노쇼_인원 / totalNoShow) * 100 : 0;
+        return {
+          ...type,
+          노쇼_비율: parseFloat(노쇼_비율.toFixed(2)) // 소수점 두 자리로 제한
+        };
+      });
+      console.log(normalizedProgramTypes)
+  
+
+        
+
+        res.json({normalizedProgramTypes : normalizedProgramTypes})
+
+    }catch(error){
+        console.log(error);
+    }
+})
+
+
+/* 프로그램 상세 노쇼 인원 */
+router.post('/noshowgraph/detail', async (req,res) => {
+    const {program_id}=req.body
+    try{
+
+        const programDetails = await req.db.query(
+            'SELECT p.* , sc.programtype_name, COUNT(sc.program_id) AS 전체_참여_인원, \
+            SUM(CASE WHEN sc.stu_give_mydex_points < 0 AND sc.stu_give_mydex_points IS NOT NULL THEN 1 ELSE 0 END) AS 노쇼_인원 \
+            FROM programs p JOIN student_completes_program sc ON p.program_id = sc.program_id \
+            where p.program_id = ? and p.program_status = "종료" \
+            ',[program_id]
+        )
+        console.log(programDetails)
+
+        // 프로그램 데이터 확인
+        if (programDetails.length === 0) {
+            return res.json({
+            message: '해당 프로그램에 대한 데이터가 없습니다.',
+            program: {
+                전체_참여_인원: 0,
+                노쇼_인원: 0,
+                노쇼_비율: 0,
+                노쇼_아닌_비율: 0
+            }
+            });
+        }
+
+        const programData = programDetails[0];
+        const { 전체_참여_인원, 노쇼_인원 } = programData;
+
+           // 비율 계산
+        const 노쇼_비율 = 전체_참여_인원 > 0 ? (노쇼_인원 / 전체_참여_인원) * 100 : 0;
+        const 노쇼_아닌_비율 = 전체_참여_인원 > 0 ? ((전체_참여_인원 - 노쇼_인원) / 전체_참여_인원) * 100 : 0;
+
+
+          // 모든 노쇼 이유 가져오기
+        const allReasons = await req.db.query(
+        'SELECT noshowreasoncategories_id, noshowreasoncategories_name FROM noshow_reason_category'
+      );
+
+        const noShowReasons = await req.db.query(
+            `SELECT nrc.noshowreasoncategories_name AS 노쇼_이유, 
+                    COUNT(sc.noshowreasoncategories_id) AS 횟수 
+             FROM student_completes_program sc
+             LEFT JOIN noshow_reason_category nrc 
+             ON sc.noshowreasoncategories_id = nrc.noshowreasoncategories_id
+             WHERE sc.program_id = ?
+             GROUP BY nrc.noshowreasoncategories_name
+             ORDER BY 횟수 DESC`,
+            [program_id]
+          );
+
+           // 응답 데이터 구성
+        const noshowGraph = {
+            programData: programData,
+            전체_참여_인원,
+            노쇼_인원,
+            노쇼_비율: parseFloat(노쇼_비율.toFixed(2)),
+            노쇼_아닌_비율: parseFloat(노쇼_아닌_비율.toFixed(2))
+        };
+
+         // 기존 결과를 맵 형태로 변환
+    const reasonMap = noShowReasons.reduce((acc, reason) => {
+        acc[reason.노쇼_이유] = reason.횟수;
+        return acc;
+      }, {});
+  
+      // 모든 이유를 기준으로 결과 매핑
+      const filledReasons = allReasons.map((reason) => {
+        return {
+          노쇼_이유: reason.noshowreasoncategories_name,
+          횟수: reasonMap[reason.noshowreasoncategories_name] || 0 // 기존에 없으면 0으로 설정
+        };
+      });
+  
+        
+
+        return res.json({noshowGraph : noshowGraph, filledReasons : filledReasons});
+
 
     }catch(error){
         console.log(error);

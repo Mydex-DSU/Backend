@@ -230,7 +230,7 @@ const updateProgramStates = async () => {
                   'select stu_give_mydex_points,response_status_change_mydex_points,survey_response_status,no_show_reason_response_status from student_completes_program where stu_id = ? and program_id = ?'
                   ,[student.stu_id, program.program_id]
                 )
-                // console.log(studentcompletecheck)
+                console.log(studentcompletecheck)
                 // console.log("studentcompletecheck[0].response_status_change_mydex_points : " + studentcompletecheck[0].response_status_change_mydex_points)
 
              

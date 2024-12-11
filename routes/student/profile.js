@@ -146,5 +146,50 @@ router.post('/program/detail', async (req,res) => {
     }
 })
 
+/* 학생 비교과 프로그램 신청 목록 */
+router.post('/application/programlist', async (req, res) => {
+    const {stu_id} = req.body
+    try 
+    {
+        const applicationProgramList = await req.db.query(
+            'select * from student_application_program_list join \
+            programs on student_application_program_list.program_id = programs.program_id \
+            join admin on programs.adm_id = admin.adm_id\
+            where student_application_program_list.stu_id = ? and \
+            student_application_program_list.stu_program_status = "참여중" and programs.program_status = "모집중"\
+            ', [stu_id]
+        )
+        // s join programs r on s.program_id and r.program_id 
+        console.log(applicationProgramList)
+
+        return res.json({applicationProgramList : applicationProgramList})
+    }
+    catch(error){
+        console.log(error)
+    }
+})
+
+/* 학생 참여 목록 비교과 프로그램 */
+router.post('/participation/programlist', async (req, res) => {
+    const {stu_id} = req.body
+    try 
+    {
+        const participationProgramList = await req.db.query(
+            'select * from student_completes_program join \
+            programs on student_completes_program.program_id = programs.program_id \
+            LEFT join noshow_reason_category on student_completes_program.noshowreasoncategories_id  = noshow_reason_category.noshowreasoncategories_id\
+            where student_completes_program.stu_id = ? and (programs.program_status = "평가중" or programs.program_status = "설문조사" or programs.program_status = "종료")\
+            ', [stu_id]
+        )
+        // s join programs r on s.program_id and r.program_id 
+        console.log(participationProgramList)
+
+        return res.json({participationProgramList : participationProgramList})
+    }
+    catch(error){
+        console.log(error)
+    }
+})
+
 
 module.exports = router;
