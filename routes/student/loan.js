@@ -24,6 +24,7 @@ router.post('/application', async (req, res) => {
     const {stu_id, loan_type_status, loan_transaction_points} = req.body
     try 
     {
+        console.log(req.body)
 
         const student = await req.db.query(
             'select * from student where stu_id = ?',
@@ -34,7 +35,7 @@ router.post('/application', async (req, res) => {
         {
             //student 테이블에서 학생 대출 포인트 업데이트
             await req.db.query(
-                'UPDATE student SET stu_current_loan_points = ?, stu_additonal_loan_count = 3 WHERE stu_id = ?;',
+                'UPDATE student SET stu_current_loan_points = ? n, stu_additonal_loan_count = 3 WHERE stu_id = ?;',
                 [loan_transaction_points, stu_id]
             )
 

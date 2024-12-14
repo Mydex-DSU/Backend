@@ -20,10 +20,13 @@ router.post('/', async (req, res) => {
         const loan_possible_point = 5 - student_profile[0].stu_current_loan_points;
 
         // student_profile과 loan_possible_point를 합침
+      
+        student_profile[0].loan_possible_point = loan_possible_point;
+
         const combinedProfile = {
-            ...student_profile[0],
-            loan_possible_point
-        };
+                    ...student_profile[0],
+
+                };
 
         res.json({ student_profile: combinedProfile });
     }
@@ -53,12 +56,48 @@ router.post('/noshowhistory', async (req, res) => {
     try 
     {
         const student_noshow_history = await req.db.query(
-            'select * from student_noshow_history where stu_id = ?',
+            'SELECT * FROM student_noshow_history WHERE stu_id = ?',
             [stu_id]
-        )
-        console.log(student_noshow_history)
+        );
+        
+        // 프로그램 정보를 가져옴
+        const programIds = student_noshow_history.map(h => h.noshowhistory_reason_number);
+        const program_check = await req.db.query(
+            'SELECT * FROM programs WHERE program_id IN (?)',
+            [programIds]
+        );
+        
+        // 대출 거래 정보를 가져옴
+        const loan_check = await req.db.query(
+            'SELECT * FROM loan_point_transaction_history WHERE loan_id IN (?)',
+            [programIds]
+        );
+        
+        // student_noshow_history에 history_reason 추가
+        student_noshow_history.forEach((history) => {
+            const matchedProgram = program_check.find(
+                (program) => program.program_id === history.noshowhistory_reason_number
+            );
+        
+            const matchedLoan = loan_check.find(
+                (loan) => loan.loan_id === history.noshowhistory_reason_number
+            );
+        
+            if (matchedProgram) {
+                // programs에서 값 매칭
+                history.history_reason = matchedProgram.program_name;
+            } else if (matchedLoan) {
+                // loan_point_transaction_history에서 값 매칭
+                history.history_reason = matchedLoan.loan_type;
+            } else {
+                // 매칭되지 않은 경우
+                history.history_reason = null;
+            }
+        });
+        
+        return res.json({ student_noshow_history: student_noshow_history });
+        
 
-        res.json({student_noshow_history : student_noshow_history})
     }
     catch(error)
     {
@@ -160,7 +199,7 @@ router.post('/application/programlist', async (req, res) => {
             ', [stu_id]
         )
         // s join programs r on s.program_id and r.program_id 
-        console.log(applicationProgramList)
+        // console.log(applicationProgramList)
 
         return res.json({applicationProgramList : applicationProgramList})
     }
@@ -182,7 +221,7 @@ router.post('/participation/programlist', async (req, res) => {
             ', [stu_id]
         )
         // s join programs r on s.program_id and r.program_id 
-        console.log(participationProgramList)
+        // console.log(participationProgramList)
 
         return res.json({participationProgramList : participationProgramList})
     }

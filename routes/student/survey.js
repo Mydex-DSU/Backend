@@ -4,6 +4,7 @@ var router = express.Router();
 /* 일반 설문조사 */
 router.post('/', async (req, res) => {
     const {stu_id, program_id} = req.body
+    console.log(stu_id)
     try 
     {
         const student_info = await req.db.query(
@@ -46,7 +47,7 @@ router.post('/noshow', async (req, res) => {
 });
 
 /* 노쇼 카테고리 설문조사 조회 */
-router.get('/noshow_reason_category', async (req, res) => {
+router.get('/noshowreasoncategory', async (req, res) => {
     try 
     {
         const noshow_reason_category = await req.db.query(
