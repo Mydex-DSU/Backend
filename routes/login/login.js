@@ -43,7 +43,7 @@ router.post('/professor', async (req, res) =>  {
         )
         console.log(pro_check);
         if (pro_check.length === 0) {
-            res.json({ pro_id: "교수 로그인에 실패하였습니다." });
+            res.json({ message: "교수 로그인에 실패하였습니다." });
         } else {
             req.session.pro_id = pro_check[0].pro_id;
             console.log( req.session.pro_id)

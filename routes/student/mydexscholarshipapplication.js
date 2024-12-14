@@ -4,7 +4,7 @@ var router = express.Router();
 /* 학생이 mydex 온도 포인트 장학금 기간에 맞게 신청을 하는 거임. application은 신청*/
 
 /* 이거는 학생 자기 자신의 mydex 온도 포인트 장학금 신청한 거 조회 */
-router.get('/', async (req, res) => {
+router.post('/', async (req, res) => {
     const {stu_id} = req.body
     try 
     {
@@ -23,6 +23,7 @@ router.get('/', async (req, res) => {
 /* 학생 mydex 온도 포인트 장학금 신청인데 신청하면 급액이 바로 지급 됨.*/
 router.post('/application', async (req, res) => {
     let {stu_id, mydex_scholarship_application_period_id, requested_scholarship_points} = req.body
+    console.log(req.body)
     try 
     {
         const student_faculty = await req.db.query(

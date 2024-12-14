@@ -10,32 +10,31 @@ router.get('/', async (req, res) => {
 
         // 현재 디비에 없는 값도 있어서 left join을 해둔 상태임.
         const grad_list = await req.db.query(
-
             `SELECT 
-s.*,
-s.department_name AS student_department_name,
-d.department_name AS department_name,
-f.faculty_name AS faculty_name,
-bgsc.stu_id AS specialty_category_stu_id,
-sc.category_name,
-GROUP_CONCAT(scd.detailed_name) AS detailed_category_names
-FROM 
-best_graduate_recommendation_list s
-JOIN 
-department d ON s.department_name = d.department_name
-JOIN 
-faculty f ON d.faculty_id = f.faculty_id
-LEFT JOIN 
-best_graduate_select_specialty_category bgsc ON s.stu_id = bgsc.stu_id
-LEFT JOIN 
-best_graduate_select_detailed_category bgdc ON s.stu_id = bgdc.stu_id
-LEFT JOIN 
-specialty_category_details scd ON bgdc.specialty_detail_id = scd.specialty_detail_id
-LEFT JOIN 
-specialty_category sc ON bgsc.specialty_category_id = sc.specialty_category_id
-GROUP BY 
-s.stu_id, s.department_name, d.department_name, f.faculty_name, bgsc.stu_id
-ORDER BY s.views desc`
+                s.*,
+                s.department_name AS student_department_name,
+                d.department_name AS department_name,
+                f.faculty_name AS faculty_name,
+                bgsc.stu_id AS specialty_category_stu_id,
+                sc.category_name,
+                GROUP_CONCAT(scd.detailed_name) AS detailed_category_names
+                FROM 
+                best_graduate_recommendation_list s
+                JOIN 
+                department d ON s.department_name = d.department_name
+                JOIN 
+                faculty f ON d.faculty_id = f.faculty_id
+                LEFT JOIN 
+                best_graduate_select_specialty_category bgsc ON s.stu_id = bgsc.stu_id
+                LEFT JOIN 
+                best_graduate_select_detailed_category bgdc ON s.stu_id = bgdc.stu_id
+                LEFT JOIN 
+                specialty_category_details scd ON bgdc.specialty_detail_id = scd.specialty_detail_id
+                LEFT JOIN 
+                specialty_category sc ON bgsc.specialty_category_id = sc.specialty_category_id
+                GROUP BY 
+                s.stu_id, s.department_name, d.department_name, f.faculty_name, bgsc.stu_id
+                ORDER BY s.views desc`
         );
         return res.status(200).json(grad_list)
 

@@ -23,6 +23,28 @@ router.post('/', async (req, res) => {
     }
 });
 
+/* 프로그램 신청 취소 */
+router.post('/delete', async (req, res) => {
+    const {stu_id, program_id} = req.body
+    try 
+    {
+        const result = await req.db.query(
+            'DELETE FROM student_application_program_list WHERE stu_id = ? AND program_id = ?',
+            [stu_id, program_id]
+        );
+
+        if (result.affectedRows > 0) {
+            res.json({ message: `학생 ID: ${stu_id}, 프로그램 ID: ${program_id} 신청이 취소되었습니다.` });
+        } else {
+            res.status(404).json({ message: '취소할 신청을 찾을 수 없습니다.' });
+        }
+    }
+    catch(error)
+    {
+        console.log(error)
+    }
+});
+
 
 
 module.exports = router;
