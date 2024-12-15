@@ -11,12 +11,6 @@ router.post('/', async (req, res) => {
         )
         console.log(student_profile[0].stu_current_loan_points)
 
-        // //대출 가능 한 포인트 
-        // const loan_possible_point = 5 - student_profile[0].stu_current_loan_points
-        // student_profile = {...student_profile, loan_possible_point}
-        // // res.json({student_profile : student_profile[0], loan_possible_point})
-        // res.json({student_profile : student_profile})
-           // 대출 가능 포인트 계산
         const loan_possible_point = 5 - student_profile[0].stu_current_loan_points;
 
         // student_profile과 loan_possible_point를 합침
@@ -36,20 +30,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-        // 데이터 처리
-        // const processedPrograms = student_join_programs.map(program => {
-        //     // 날짜를 합친 문자열 생성
-        //     const applicationPeriod = `${new Date(program.program_application_start_time).toISOString().slice(0, 10)} ~ ${new Date(program.program_application_end_time).toISOString().slice(0, 10)}`;
-        //     const operationPeriod = `${new Date(program.program_operation_start_time).toISOString().slice(0, 10)} ~ ${new Date(program.program_operation_end_time).toISOString().slice(0, 10)}`;
-
-        //     // 프로그램 정보를 새 객체로 반환
-        //     return {
-        //         ...program,
-        //         applicationPeriod, // 추가된 결합된 신청 기간 문자열
-        //         operationPeriod,   // 추가된 결합된 운영 기간 문자열
-        //     };
-        // });
-
 /* 학생 전체 노쇼 내역 */
 router.post('/noshowhistory', async (req, res) => {
     const {stu_id} = req.body
@@ -61,17 +41,30 @@ router.post('/noshowhistory', async (req, res) => {
         );
         
         // 프로그램 정보를 가져옴
+        // 프로그램 정보를 가져옴
         const programIds = student_noshow_history.map(h => h.noshowhistory_reason_number);
-        const program_check = await req.db.query(
-            'SELECT * FROM programs WHERE program_id IN (?)',
-            [programIds]
-        );
+        let program_check = [];
+        let loan_check = [];
+        if (programIds.length > 0) {
+            // programIds가 비어 있지 않은 경우에만 쿼리 실행
+            program_check = await req.db.query(
+                'SELECT * FROM programs WHERE program_id IN (?)',
+                [programIds]
+            );
+
+            // 대출 거래 정보를 가져옴
+            loan_check = await req.db.query(
+                'SELECT * FROM loan_point_transaction_history WHERE loan_id IN (?)',
+                [programIds]
+            );
+        } else {
+            // programIds가 비어 있으면 빈 배열 반환 또는 기본 처리
+            const program_check = [];
+            console.log("No programs to fetch.");
+        }
+
         
-        // 대출 거래 정보를 가져옴
-        const loan_check = await req.db.query(
-            'SELECT * FROM loan_point_transaction_history WHERE loan_id IN (?)',
-            [programIds]
-        );
+
         
         // student_noshow_history에 history_reason 추가
         student_noshow_history.forEach((history) => {
@@ -159,7 +152,8 @@ router.post('/program/detail', async (req,res) => {
     try
     {
         const program_detail = await req.db.query(
-            'select * from programs join admin on admin.adm_id = programs.adm_id where program_id = ?',
+            'select * from programs join admin on admin.adm_id = programs.adm_id \
+            join programtype on programs.programtype_id = programtype.programtype_id where program_id = ?',
             [program_id]
         )
 
@@ -195,7 +189,7 @@ router.post('/application/programlist', async (req, res) => {
             programs on student_application_program_list.program_id = programs.program_id \
             join admin on programs.adm_id = admin.adm_id\
             where student_application_program_list.stu_id = ? and \
-            student_application_program_list.stu_program_status = "참여중" and programs.program_status = "모집중"\
+            student_application_program_list.stu_program_status = "참여중" and (programs.program_status = "모집중" or programs.program_status = "모집완료" or programs.program_status = "운영중")\
             ', [stu_id]
         )
         // s join programs r on s.program_id and r.program_id 
@@ -214,12 +208,40 @@ router.post('/participation/programlist', async (req, res) => {
     try 
     {
         const participationProgramList = await req.db.query(
-            'select * from student_completes_program join \
-            programs on student_completes_program.program_id = programs.program_id \
-            LEFT join noshow_reason_category on student_completes_program.noshowreasoncategories_id  = noshow_reason_category.noshowreasoncategories_id\
-            where student_completes_program.stu_id = ? and (programs.program_status = "평가중" or programs.program_status = "설문조사" or programs.program_status = "종료")\
-            ', [stu_id]
+            `
+                SELECT 
+                    *
+                FROM 
+                    student_application_program_list
+                JOIN 
+                    student_completes_program 
+                ON 
+                    student_application_program_list.stu_id = student_completes_program.stu_id 
+                    AND student_application_program_list.program_id = student_completes_program.program_id
+                LEFT JOIN 
+                    programs 
+                ON 
+                    student_completes_program.program_id = programs.program_id
+                LEFT JOIN 
+                    noshow_reason_category 
+                ON 
+                    student_completes_program.noshowreasoncategories_id = noshow_reason_category.noshowreasoncategories_id
+                WHERE 
+                    student_application_program_list.stu_id = ?
+                    AND (programs.program_status = "평가중" 
+                        OR programs.program_status = "설문조사" 
+                        OR programs.program_status = "종료");
+
+            `
+            ,[stu_id]
         )
+
+        // 'select * from student_completes_program join \
+        // programs on student_completes_program.program_id = programs.program_id \
+        // left join student_application_program_list on student_completes_program.stu_id = student_application_program_list.stu_id and student_completes_program.program_id = student_application_program_list.program_id\
+        // LEFT join noshow_reason_category on student_completes_program.noshowreasoncategories_id  = noshow_reason_category.noshowreasoncategories_id\
+        // where student_completes_program.stu_id = ? and (programs.program_status = "평가중" or programs.program_status = "설문조사" or programs.program_status = "종료")\
+        // ', [stu_id]
         // s join programs r on s.program_id and r.program_id 
         // console.log(participationProgramList)
 

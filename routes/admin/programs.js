@@ -395,44 +395,33 @@ router.get('/noshowgraph/list', async (req,res) => {
     try{
 
         const programlist = await req.db.query(
-            'SELECT p.*,\
-            COUNT(scp.program_id) AS total_program_links,\
-            SUM(CASE WHEN scp.no_show_reason_response_status IS NOT NULL THEN 1 ELSE 0 END) AS no_show_student,\
-            CASE \
-                WHEN COUNT(scp.program_id) > 0 THEN \
-                    SUM(CASE WHEN scp.no_show_reason_response_status IS NOT NULL THEN 1 ELSE 0 END) * 100 / COUNT(scp.program_id)\
-                ELSE 0\
-            END AS response_rate\
-            FROM student_completes_program AS scp left JOIN\
-            programs AS p ON scp.program_id = p.program_id\
-            where p.program_status = "종료" \
-            '
+            `
+            SELECT 
+                p.*,
+                p.program_id,
+                p.program_name,
+                COUNT(scp.program_id) AS total_program_count, -- 전체 program_id 레코드 수
+                SUM(CASE WHEN scp.noshowreasoncategories_id IS NOT NULL THEN 1 ELSE 0 END) AS no_show_count, -- NULL이 아닌 경우 카운트
+                CASE 
+                    WHEN COUNT(scp.program_id) > 0 THEN 
+                        ROUND(SUM(CASE WHEN scp.noshowreasoncategories_id IS NOT NULL THEN 1 ELSE 0 END) * 100 / COUNT(scp.program_id), 2)
+                    ELSE 0 
+                END AS no_show_rate -- NULL이 아닌 비율 계산
+            FROM 
+                programs AS p
+            LEFT JOIN 
+                student_completes_program AS scp 
+            ON 
+                p.program_id = scp.program_id
+            WHERE 
+                p.program_status = '종료'
+            GROUP BY 
+                p.program_id, p.program_name
+            ORDER BY 
+                p.program_id;
+            `
         )
-  
-      
         return res.json({programlist : programlist});
-
-        // `
-        // SELECT 
-        //     p.*, 
-        //     COUNT(scp.program_id) AS total_program_links,
-        //     SUM(CASE WHEN scp.no_show_reason_response_status IS NOT NULL THEN 1 ELSE 0 END) AS no_show_student,
-        //     CASE 
-        //         WHEN COUNT(scp.program_id) > 0 THEN 
-        //             SUM(CASE WHEN scp.no_show_reason_response_status IS NOT NULL THEN 1 ELSE 0 END) * 100 / COUNT(scp.program_id)
-        //         ELSE 0
-        //     END AS response_rate
-        // FROM 
-        //     programs AS p
-        // LEFT JOIN 
-        //     student_completes_program AS scp 
-        // ON 
-        //     p.program_id = scp.program_id
-        // WHERE 
-        //     p.program_status = "종료"
-        // GROUP BY 
-        //     p.program_id
-        // `
     }catch(error){
         console.log(error);
     }
