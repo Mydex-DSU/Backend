@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
     try {
         // 원하는 상태를 필터링하는 쿼리
         const programs = await req.db.query(
-            "SELECT * FROM programs WHERE program_status IN ('대기중', '모집중', '모집완료')"
+            "SELECT * FROM programs WHERE program_status IN ('대기중', '모집중', '모집완료', '운영중')"
         );
         res.json({ programs: programs });
     } catch (error) {
@@ -184,7 +184,7 @@ router.post('/fin/detail', async (req, res) => {
     try {
         // 원하는 상태를 필터링하는 쿼리
         const programs = await req.db.query(
-            "SELECT * FROM programs WHERE program_id = ?",
+            "SELECT * FROM programs join programtype on programs.programtype_id = programtype.programtype_id WHERE program_id = ?",
             [program_id]
         );
 

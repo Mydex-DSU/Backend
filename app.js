@@ -670,21 +670,21 @@ const updateProgramStates = async () => {
                       if (student_select[0].stu_current_loan_points > 0) //대출 포인트 있음
                       {
                         console.log("대출 포인트 있음")
-                        if (fin_mydex_points === 0 && temp !== null)
-                        {
-                          console.log("fin_mydex_points === 0")
-                          fin_mydex_points = temp;
-                          await db.query(
-                            'UPDATE student SET stu_current_loan_points = stu_current_loan_points + ? WHERE stu_id = ?;',
-                            [fin_mydex_points, student.stu_id]
-                          )                            
-                          await db.query(
-                              'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
-                              ,[student.stu_id, "상환", fin_mydex_points, student_select[0].stu_current_loan_points + fin_mydex_points]
-                          )
+                        // if (fin_mydex_points === 0 && temp !== null)
+                        // {
+                        //   console.log("fin_mydex_points === 0")
+                        //   fin_mydex_points = temp;
+                        //   await db.query(
+                        //     'UPDATE student SET stu_current_loan_points = stu_current_loan_points + ? WHERE stu_id = ?;',
+                        //     [fin_mydex_points, student.stu_id]
+                        //   )                            
+                        //   await db.query(
+                        //       'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
+                        //       ,[student.stu_id, "상환", fin_mydex_points, student_select[0].stu_current_loan_points + fin_mydex_points]
+                        //   )
 
-                        }
-                        else if (fin_mydex_points > 0) // P > 0
+                        // }
+                        if (fin_mydex_points > 0) // P > 0
                         {
                           console.log("fin_mydex_points > 0")
                           if (student_select[0].stu_current_loan_points >= fin_mydex_points) // D >= P
@@ -790,7 +790,7 @@ const updateProgramStates = async () => {
                         );
                         const status = student_select[0].stu_current_mydex_points + fin_mydex_points
                         if (status <= 0){
-                          fin_mydex_points = student_select[0].stu_current_mydex_points - (student_select[0].stu_current_mydex_points - 1)
+                          fin_mydex_points = (-student_select[0].stu_current_mydex_points + 1)
                         }
                         //4. 학생 mydex 온도 포인트 거래 내역에 값 삽입.
                         await db.query(
@@ -854,6 +854,8 @@ const updateProgramStates = async () => {
       console.error('Error updating program states:', error);
     }
 };
+
+// 초
 
 // cron.schedule('*/1 * * * *', updateProgramStates); // 매 1분마다 실행
 setInterval(updateProgramStates, 5000); // 30초 = 30000ms
