@@ -56,5 +56,20 @@ router.post('/graduateapplicationfin', async (req, res) => {
     }
 })
 
+/* */
+/* 인센티브 내역 */
+router.get('/graduate', async (req,res) => {
+    try{
+        const graduate = await req.db.query(
+            'select * from best_graduate_incentivelist')
+
+        return res.json({graduate : graduate})
+        
+    }catch(error){
+        console.log(error)
+    }
+
+ })
+
 
 module.exports = router;

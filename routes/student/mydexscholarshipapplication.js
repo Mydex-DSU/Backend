@@ -88,5 +88,40 @@ router.post('/application', async (req, res) => {
     }
 });
 
+/*mydex 학생 온도 포인트 거래 내역 확인*/
+router.post('/detail', async (req, res)=> {
+    const {stu_id} = req.body
+    try{
+        const mydexscholarshipdetail = await req.db.query(
+            `select * from mydex_point_history where stu_id = ?`
+            ,[stu_id]
+        )
+        // const mydexscholarshipdetail = await req.db.query(
+        //     `SELECT 
+        //         mh.*, 
+        //         p.*, 
+        //         rp.*, 
+        //         s.*
+        //     FROM 
+        //         mydex_point_history mh
+        //     LEFT JOIN 
+        //         programs p ON mh.mydexpointshistory_reason_number = p.program_id
+        //     LEFT JOIN 
+        //         remedial_program_application_list rp ON mh.mydexpointshistory_reason_number = rp.remedialprogram_application_id
+        //     LEFT JOIN 
+        //         mydex_point_scholarship_application_list s ON mh.mydexpointshistory_reason_number = s.mydex_scholarship_application_period_id
+        //     WHERE 
+        //         mh.stu_id = ?`,
+        //     [stu_id]
+        // );
+        res.json({mydexscholarshipdetail : mydexscholarshipdetail});
+    }
+    catch(error){
+        console.log(error)
+    }
+})
+
+
+
 
 module.exports = router;

@@ -6,8 +6,6 @@ var router = express.Router();
 
 var logger = require('../../logger');
 
-
-
 /* mydex 온도 포인트 장학금 신청 조회*/
 router.get('/', async (req, res) => {
     try{
