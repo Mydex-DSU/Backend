@@ -591,7 +591,14 @@ const updateProgramStates = async () => {
                           [randomBoolean, student.stu_id, program.program_id]
                         );
                       }
-                      else if (programtype_name[0].programtype_name === "캠프및워크숍" || programtype_name[0].programtype_name === "클리닉참여" ||programtype_name[0].programtype_name === "견학") // 참여여부
+                      else if (programtype_name[0].programtype_name === "캠프및워크숍"){
+                        const randomBoolean = 0; // 50% 확률로 true 또는 false
+                        await db.query(
+                          `UPDATE student_completes_program SET participation_status = ? WHERE stu_id = ? and program_id = ?`,
+                          [randomBoolean, student.stu_id, program.program_id]
+                        );
+                      }
+                      else if (programtype_name[0].programtype_name === "클리닉참여" ||programtype_name[0].programtype_name === "견학") // 참여여부
                       {
                         const randomBoolean = Math.random() < 0.5; // 50% 확률로 true 또는 false
                         await db.query(
@@ -697,6 +704,15 @@ const updateProgramStates = async () => {
                                 'UPDATE student SET stu_current_loan_points = stu_current_loan_points + ? WHERE stu_id = ?;',
                                 [fin_mydex_points, student.stu_id]
                             )
+                            //대출 포인트가 0이되면 다시 초기화 해주어야함.
+                            if (student_select[0].stu_current_loan_points + fin_mydex_points === 0){
+                              //student 테이블에서 학생 대출 포인트 업데이트
+                              await db.query(
+                                'UPDATE student SET stu_additonal_loan_count = 3 WHERE stu_id = ?;',
+                                [student.stu_id]
+                              )
+                            }
+
                             //대출 포인트 거래 내역 업데이트
                             await db.query(
                                 'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
@@ -706,6 +722,12 @@ const updateProgramStates = async () => {
                           }
                           else if (student_select[0].stu_current_loan_points < fin_mydex_points) // D < P
                           {
+                            //student 테이블에서 학생 대출 포인트 업데이트
+                            await db.query(
+                              'UPDATE student SET stu_additonal_loan_count = 3 WHERE stu_id = ?;',
+                              [student.stu_id]
+                            )
+
                             console.log("D < P")
                             // 1 = 3 - 2
                             const finDP = fin_mydex_points - student_select[0].stu_current_loan_points;
@@ -734,7 +756,7 @@ const updateProgramStates = async () => {
                           //대출 포인트 거래 내역 업데이트 ->
                           const insertloanpointtransactionhistory = await db.query(
                             'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
-                            ,[student.stu_id, "대출노쇼로인한초기화", -student_select[0].stu_current_loan_points, 0]
+                            ,[student.stu_id, "포인트대출이후미참여", -student_select[0].stu_current_loan_points, 0]
                           )
 
                           //student 테이블에서 학생 대출 포인트 업데이트 ->
@@ -817,13 +839,12 @@ const updateProgramStates = async () => {
         await db.query('UPDATE programs SET program_status = ? WHERE program_id = ?', [program.program_status, program.program_id]);
       }
 
-
+      const students = await db.query(
+        'select * from student'
+      )
       // end_date를 지났는지 확인
       if (currentTime > session.end_date) {
         console.log("현재 시간이 end_date를 지났습니다.");
-        const students = await db.query(
-          'select * from student'
-        )
         for (const student_one of students) {
           if (student_one.stu_current_loan_points !== 0){
             //student 테이블에서 학생 대출 포인트 업데이트 ->
@@ -835,7 +856,7 @@ const updateProgramStates = async () => {
             //대출 포인트 거래 내역 업데이트 ->
             const insertloanpointtransactionhistory = await db.query(
               'insert into loan_point_transaction_history(stu_id, loan_type, loan_transaction_points, loan_remaining_points) values (?,?,?,?)'
-              ,[student_one.stu_id, "노쇼로인한초기화", -student_one.stu_current_loan_points, 0]
+              ,[student_one.stu_id, "대출상환하지못함", -student_one.stu_current_loan_points, 0]
             )
 
             //학생 전체 노쇼 내역 업데이트
@@ -843,11 +864,30 @@ const updateProgramStates = async () => {
               'insert into student_noshow_history(stu_id, noshowhistory_recv_count, noshowhistory_reason_number) values(?,?,?)',
               [student_one.stu_id, 2, insertloanpointtransactionhistory.insertId]
             )
-          }                                                                                         
+          }
         }
+        //학생 초기화 포인트
+        const currentYear = new Date().getFullYear(); // 현재 년도 가져오기
+        for (const student_one of students) {
+            if (student_one.stu_reset_date !== null) {
+                const resetYear = new Date(student_one.stu_reset_date).getFullYear(); // stu_reset_date의 년도 가져오기
+        
+                if (resetYear < currentYear) {
+                    // stu_reset_date가 현재 년도보다 낮은 경우 처리
+                    await db.query(
+                        'UPDATE student SET stu_reset_available_count = 1 WHERE stu_id = ?;',
+                        [student_one.stu_id]
+                    );
+                    console.log(`stu_id ${student_one.stu_id} 초기화 완료 (년도 차이 감지: ${resetYear} < ${currentYear})`);
+                }
+            }
+        }
+        
       } else {
         console.log("현재 시간이 end_date 이전입니다.");
       }
+
+
 
       console.log('Program states updated successfully');
     } catch (error) {

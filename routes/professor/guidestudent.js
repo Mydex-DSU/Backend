@@ -48,26 +48,29 @@ router.post('/reset', async (req, res) => {
 })
 
 /* 지도 교수가 추천을 이번 년도에 했나 안 했나 확인*/
-router.post('/recommend/check', async (req,res) => {
-    const {pro_id, year} = req.body
+router.post('/recommend/check', async (req, res) => {
+    const { pro_id, year } = req.body;
 
-    try{
+    try {
+        const currentYear = new Date().getFullYear(); // 현재 년도 가져오기
+
         const check = await req.db.query(
-            'select * from best_graduate_recommendation_list where pro_id = ? and year_of_recommendation = ?'
-            ,[pro_id, year]
-        )
-        console.log(check)
-        if (check.length === 0 ){
-            res.json({check : false})
+            'SELECT * FROM best_graduate_recommendation_list WHERE pro_id = ? AND year_of_recommendation = ?',
+            [pro_id, year]
+        );
+
+        console.log(check);
+
+        // 조건: 해당 데이터가 없거나, 입력된 year가 현재 년도보다 이전일 경우
+        if (check.length === 0 || parseInt(year) < currentYear) {
+            res.json({ check: false });
+        } else {
+            res.json({ check: true, student: check });
         }
-        else 
-        {
-            res.json({check : true, student : check})
-        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
-    catch(error){
-        console.log(error)
-    }
-})
+});
 
 module.exports = router;
